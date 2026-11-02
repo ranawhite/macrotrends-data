@@ -328,8 +328,57 @@ REGIONS = {
         "cur_peak": "2026-02",
         "jobs_label": "Unemployment (NSW)",
         "scenarios": SYDNEY_SCENARIOS,
+        "suburbs_csv": "sydney_north_suburbs.csv",
     },
 }
+
+
+# --------------------------------------------------------------------------
+# Suburb projections. Each suburb follows the Sydney scenario paths scaled by a
+# price-tier sensitivity ("beta"): dearer suburbs fell further in 1989-92,
+# 2017-19 and 2022, and rebounded faster. beta = 1 at about $2.6m.
+# --------------------------------------------------------------------------
+
+SUBURB_REF_WINDOW = ("2025-10", "2026-09")  # period the reference medians roughly cover
+
+
+def suburb_beta(median: float) -> float:
+    return round(clamp(1.0 + 0.25 * math.log2(median / 2_600_000), 0.8, 1.45), 2)
+
+
+def suburbs(cycle: Cycle, scen: list[dict], path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    lo, hi = SUBURB_REF_WINDOW
+    window = [r.price_index for r in cycle.rows if lo <= r.period <= hi]
+    ref_level = sum(window) / len(window)
+    city_move = cycle.latest.price_index / ref_level - 1  # Sydney change since the reference window
+    out = []
+    with path.open(newline="") as fh:
+        for rec in csv.DictReader(fh):
+            med = float(rec["ref_median"])
+            beta = suburb_beta(med)
+            now = med * (1 + beta * city_move)
+            proj = {}
+            for sc in scen:
+                level, trough, trough_p = now, now, cycle.latest.period
+                prev = cycle.latest.price_index
+                for p in sc["path"]:
+                    city_pct = p["index"] / prev - 1
+                    prev = p["index"]
+                    level *= 1 + beta * city_pct
+                    if level < trough:
+                        trough, trough_p = level, p["period"]
+                proj[sc["key"]] = {"end": round(level, -3), "trough": round(trough, -3), "trough_period": trough_p,
+                                   "change": round((level / now - 1) * 100, 1)}
+            expected = sum(sc["probability"] * proj[sc["key"]]["end"] for sc in scen)
+            out.append({
+                "suburb": rec["suburb"], "area": rec["area"], "basis": rec["basis"], "note": rec["note"],
+                "ref_median": med, "beta": beta, "now": round(now, -3),
+                "expected": round(expected, -3), "expected_change": round((expected / now - 1) * 100, 1),
+                "scenarios": proj,
+            })
+    return out
 
 
 def build(region: str = "national") -> dict:
@@ -349,7 +398,9 @@ def build(region: str = "national") -> dict:
         "score_now": sc_now,
         "score_then": sc_then,
         "checklist": checklist(cur),
-        "scenarios": scenarios(cur, sc_now["composite"], cfg["scenarios"]),
+        "scenarios": (scen := scenarios(cur, sc_now["composite"], cfg["scenarios"])),
+        "suburbs": suburbs(cur, scen, DATA / cfg["suburbs_csv"]) if cfg.get("suburbs_csv") else [],
+        "suburb_window": SUBURB_REF_WINDOW,
         "analogue": analogue(hist, cur),
         "series": {
             "hist": [vars(r) for r in hist.rows],

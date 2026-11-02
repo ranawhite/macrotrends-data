@@ -136,6 +136,23 @@ th { font-weight: 600; color: var(--ink-2); font-size: 12px; letter-spacing: .04
 td.num, th.num { text-align: right; }
 .colhead { display: inline-flex; align-items: center; gap: 6px; }
 
+/* Suburbs */
+table.suburbs td { white-space: nowrap; padding-inline: 8px; }
+table.suburbs th { padding-inline: 8px; vertical-align: bottom; }
+table.suburbs tr.group td { font-family: var(--f-data); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding-top: 18px; border-bottom-color: var(--ink-3); }
+table.suburbs .sub { font-weight: 600; }
+.basis { font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-left: 6px; font-weight: 500; vertical-align: 1px; }
+.basis.reported { color: var(--now); border: 1px solid var(--now); }
+.basis.estimate { color: var(--ink-3); border: 1px dashed var(--ink-3); }
+.range { position: relative; width: 130px; height: 18px; }
+.range .axis { position: absolute; top: 8px; left: 0; right: 0; height: 2px; background: var(--grid); }
+.range .zero { position: absolute; top: 2px; width: 1px; height: 14px; background: var(--ink-3); }
+.range .span { position: absolute; top: 5px; height: 8px; border-radius: 4px; background: var(--now); opacity: .28; }
+.range .base { position: absolute; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--now); border: 2px solid var(--surface); transform: translateX(-6px); }
+.range-key { display: inline-flex; align-items: center; gap: 6px; }
+.range-key .k-span { width: 22px; height: 8px; border-radius: 4px; background: var(--now); opacity: .28; display: inline-block; }
+.range-key .k-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--now); display: inline-block; }
+
 /* Checklist */
 .checks { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
 .checks li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--rule); }
@@ -176,6 +193,16 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
       <p class="lede"><span id="scen-place">Monthly paths for the national home value index</span> from the latest reading. Probabilities start from a judgement-based prior and tilt with the composite signal each time the tracker is re-run.</p>
     </div>
     <div class="scenarios" id="scenarios"></div>
+  </section>
+
+  <section id="suburbs-sec" hidden>
+    <div class="section-head">
+      <h2>North Shore and nearby suburbs</h2>
+      <p class="lede" id="suburbs-lede"></p>
+    </div>
+    <div class="legend" id="suburbs-legend"></div>
+    <div class="panel table-wrap"><table id="suburbs" class="suburbs"></table></div>
+    <p class="note" id="suburbs-note"></p>
   </section>
 
   <section>
@@ -518,6 +545,43 @@ function paintTables() {
     }).join("") + "</tbody>";
 }
 
+const money = (v) => v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + "m" : "$" + Math.round(v / 1e3) + "k";
+function paintSuburbs() {
+  const sec = $("suburbs-sec");
+  const list = D.suburbs || [];
+  sec.hidden = !list.length;
+  if (!list.length) return;
+  const sc = Object.fromEntries(D.scenarios.map((x) => [x.key, x]));
+  const pct = (k) => Math.round(sc[k].probability * 100);
+  const baseCh = list.map((x) => x.scenarios.base.change);
+  const nowMove = list.map((x) => (x.now / x.ref_median - 1) * 100);
+  $("suburbs-lede").textContent = `House values for ${list.length} suburbs, projected 12 months ahead to ${fmtPeriod(sc.base.path[sc.base.path.length - 1].period)}. Each suburb follows the Sydney paths above, scaled by its price bracket: dearer suburbs fell further in 1989–92, 2017–19 and 2022 and bounced back faster. On the most likely path these suburbs fall a further ${Math.abs(Math.max(...baseCh)).toFixed(0)}–${Math.abs(Math.min(...baseCh)).toFixed(0)}% over the year, on top of the ${Math.abs(Math.max(...nowMove)).toFixed(0)}–${Math.abs(Math.min(...nowMove)).toFixed(0)}% already lost since the median was recorded.`;
+  $("suburbs-legend").innerHTML = `<span class="range-key"><i class="k-span"></i>12-month range: recession path (${pct("bear")}%) to early pivot (${pct("bull")}%)</span><span class="range-key"><i class="k-dot"></i>Grinding correction, most likely (${pct("base")}%)</span><span><i class="basis reported" style="margin:0">reported</i>&nbsp;published median</span><span><i class="basis estimate" style="margin:0">estimate</i>&nbsp;my estimate</span>`;
+  const lo = Math.floor(Math.min(...list.map((x) => x.scenarios.bear.change)) / 2) * 2 - 1;
+  const hi = Math.ceil(Math.max(...list.map((x) => x.scenarios.bull.change)) / 2) * 2 + 1;
+  const X = (v) => ((v - lo) / (hi - lo)) * 100;
+  const bar = (x) => `<div class="range" role="img" aria-label="12-month change from ${sign(x.scenarios.bear.change)}% to ${sign(x.scenarios.bull.change)}%, most likely ${sign(x.scenarios.base.change)}%">
+    <div class="axis"></div><div class="zero" style="left:${X(0)}%"></div>
+    <div class="span" style="left:${X(x.scenarios.bear.change)}%;width:${X(x.scenarios.bull.change) - X(x.scenarios.bear.change)}%"></div>
+    <div class="base" style="left:${X(x.scenarios.base.change)}%"></div></div>`;
+  let html = `<thead><tr><th>Suburb<br><span class="note">houses</span></th><th class="num">Recorded median</th><th class="num">Value now (est.)</th><th class="num">Likely low</th><th class="num">Likely ${fmtPeriod(sc.base.path[sc.base.path.length - 1].period)}</th><th>12-month change<br><span class="note">axis ${sign(lo, 0)}% to ${sign(hi, 0)}%</span></th><th class="num">Range</th><th class="num">Weighted</th></tr></thead><tbody>`;
+  let area = "";
+  for (const x of list) {
+    if (x.area !== area) { area = x.area; html += `<tr class="group"><td colspan="8">${esc(area)}</td></tr>`; }
+    const b = x.scenarios.base;
+    html += `<tr><td><span class="sub">${esc(x.suburb)}</span><i class="basis ${x.basis}" ${x.note ? `title="${esc(x.note)}"` : ""}>${x.basis}</i></td>
+      <td class="num">${money(x.ref_median)}</td><td class="num">${money(x.now)}</td>
+      <td class="num">${money(b.trough)} <span class="note">${fmtPeriod(b.trough_period).replace(" 20", " ’")}</span></td>
+      <td class="num">${money(b.end)} <span class="note">${sign(b.change)}%</span></td>
+      <td>${bar(x)}</td>
+      <td class="num">${sign(x.scenarios.bear.change, 0)} to ${sign(x.scenarios.bull.change, 0)}%</td>
+      <td class="num">${money(x.expected)}</td></tr>`;
+  }
+  $("suburbs").innerHTML = html + "</tbody>";
+  const notes = list.filter((x) => x.note).map((x) => `${x.suburb}: ${x.note}`);
+  $("suburbs-note").textContent = `"Recorded median" is a house median from roughly ${fmtPeriod(D.suburb_window[0])} to ${fmtPeriod(D.suburb_window[1])}. "Est. value now" moves it by the Sydney index change since then, scaled by price bracket. "Weighted" is the probability-weighted value across the three paths. Suburb medians swing with the mix of homes sold, so treat these as a guide to direction and size, not a valuation of any home. ${notes.join(". ")}.`;
+}
+
 function show(region) {
   REGION = ALL.regions[region] ? region : ALL.order[0];
   D = ALL.regions[REGION];
@@ -526,7 +590,7 @@ function show(region) {
   bull = D.scenarios.find((s) => s.key === "bull");
   bear = D.scenarios.find((s) => s.key === "bear");
   for (const b of document.querySelectorAll(".toggle button")) b.setAttribute("aria-pressed", String(b.dataset.region === REGION));
-  paintText(); render(); paintTables();
+  paintText(); render(); paintTables(); paintSuburbs();
 }
 
 const fromHash = () => (location.hash === "#sydney" ? "sydney" : "national");

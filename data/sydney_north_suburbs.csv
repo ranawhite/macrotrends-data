@@ -1,0 +1,24 @@
+suburb,area,ref_median,basis,note
+Mosman,Lower North Shore,5600000,reported,house median 12 months to Sep 2026; a Feb-Jul 2026 sample gave $5.08m
+Cremorne,Lower North Shore,3900000,estimate,
+Neutral Bay,Lower North Shore,3600000,estimate,
+North Sydney,Lower North Shore,3300000,estimate,
+Willoughby,Lower North Shore,3400000,estimate,
+Chatswood,Lower North Shore,3325000,reported,house median Oct 2025 to Sep 2026
+Lane Cove,Lower North Shore,3200000,reported,house median 12 months to Jun 2026 (54 sales); modelled value $2.88m
+Artarmon,Lower North Shore,3200000,estimate,
+Roseville,Upper North Shore,4000000,estimate,
+Lindfield,Upper North Shore,4100000,estimate,a Feb-Jul 2026 sample of 33 sales gave $5.82m (likely skewed by prestige sales)
+Killara,Upper North Shore,4000000,estimate,
+Gordon,Upper North Shore,3500000,estimate,
+Pymble,Upper North Shore,3825000,reported,house median Feb-Jul 2026; other sources as low as $2.9m
+St Ives,Upper North Shore,3300000,estimate,
+Turramurra,Upper North Shore,2800000,estimate,
+Wahroonga,Upper North Shore,3000000,reported,sources range $2.49m-$3.4m; midpoint used
+Hornsby,Upper North Shore,1750000,estimate,
+Hunters Hill,Surrounding,3900000,estimate,
+Epping,Surrounding,2500000,estimate,
+Ryde,Surrounding,2200000,estimate,
+Manly,Northern Beaches,5000000,estimate,
+Dee Why,Northern Beaches,2400000,estimate,
+Frenchs Forest,Northern Beaches,2300000,estimate,

@@ -35,9 +35,17 @@ Mar 2026 = 100) and re-run. A month's index is last month's × (1 + Cotality mon
 | `data/current_2024_2026.csv` | 2024–26 data (Cotality HVI, ABS Labour Force, ABS CPI, ABS National Accounts, RBA) |
 | `data/sydney_1988_1994.csv` | Sydney 1988–94 cycle with NSW unemployment (approximate; illustrative) |
 | `data/sydney_2024_2026.csv` | Sydney 2024–26 (Cotality Sydney readings, NSW unemployment from Jobs and Skills Australia; gaps interpolated) |
+| `data/sydney_north_suburbs.csv` | North Shore and nearby suburb house medians (`basis` = reported or estimate) used for suburb projections |
 | `tracker/model.py` | Alignment, scoring, checklist, scenarios; `REGIONS` holds each market's files, peak and scenario paths |
 | `tracker/render.py` | Builds the dashboard and text summary |
 | `tracker/template.html` | Dashboard template |
+
+## Suburb projections (Sydney view)
+
+Each suburb follows the Sydney scenario paths scaled by a price-bracket sensitivity
+(`beta = 1 + 0.25 × log2(median / $2.6m)`, bounded 0.8–1.45), because dearer suburbs
+fell further in 1989–92, 2017–19 and 2022 and rebounded faster. Edit
+`data/sydney_north_suburbs.csv` to add suburbs or replace estimates with fresh medians.
 
 ## Caveats
 
