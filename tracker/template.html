@@ -1,0 +1,474 @@
+<title>Aussie Property Cycle Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; the verdict first, then the 1989-92 overlay, then the evidence. */
+:root {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --ink: #14181d;
+  --ink-2: #4b5560;
+  --ink-3: #7a838c;
+  --rule: #dfe3e7;
+  --grid: #eceff2;
+  --now: #2a78d6;      /* today's cycle */
+  --then: #eb6834;     /* 1989-92 cycle */
+  --good: #1f8a4c; --good-bg: #e3f4ea;
+  --warn: #a96a00; --warn-bg: #fdf1d8;
+  --crit: #c23b3a; --crit-bg: #fbe4e3;
+  --neutral-bg: #eceff2;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101317; --surface: #171b20; --ink: #eef1f4; --ink-2: #b4bcc5; --ink-3: #87909a;
+    --rule: #2a3038; --grid: #22272e; --now: #3987e5; --then: #d95926;
+    --good: #4cc27c; --good-bg: #13301f; --warn: #e3a838; --warn-bg: #33270f;
+    --crit: #ef6b6a; --crit-bg: #3a1a1a; --neutral-bg: #232931;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101317; --surface: #171b20; --ink: #eef1f4; --ink-2: #b4bcc5; --ink-3: #87909a;
+  --rule: #2a3038; --grid: #22272e; --now: #3987e5; --then: #d95926;
+  --good: #4cc27c; --good-bg: #13301f; --warn: #e3a838; --warn-bg: #33270f;
+  --crit: #ef6b6a; --crit-bg: #3a1a1a; --neutral-bg: #232931;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.08; font-weight: 700; }
+h2 { font-size: 22px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; }
+.eyebrow { font-family: var(--f-data); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.lede { color: var(--ink-2); max-width: 68ch; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+section { display: grid; gap: 16px; min-width: 0; }
+.section-head { display: grid; gap: 6px; }
+
+/* Header */
+header { display: grid; gap: 18px; }
+.verdict { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+@media (max-width: 760px) { .verdict { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; min-width: 0; }
+.answer { display: grid; gap: 12px; }
+.answer p { color: var(--ink-2); }
+.answer strong { color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; width: fit-content; }
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.tone-critical { color: var(--crit); background: var(--crit-bg); }
+.tone-warning { color: var(--warn); background: var(--warn-bg); }
+.tone-good { color: var(--good); background: var(--good-bg); }
+.tone-neutral { color: var(--ink-2); background: var(--neutral-bg); }
+
+.gauge { display: grid; gap: 10px; }
+.gauge-track { position: relative; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--crit) 0%, var(--warn) 35%, var(--neutral-bg) 50%, var(--good) 100%); }
+.gauge-mark { position: absolute; top: -5px; width: 4px; height: 22px; border-radius: 2px; transform: translateX(-2px); background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.gauge-mark.then { background: var(--then); height: 16px; top: -2px; }
+.gauge-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
+.big { font-family: var(--f-display); font-size: 48px; font-weight: 700; line-height: 1; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
+.kv dt { color: var(--ink-2); }
+.kv dd { margin: 0; font-family: var(--f-data); text-align: right; }
+
+/* Scenarios */
+.scenarios { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .scenarios { grid-template-columns: 1fr; } }
+.scenario { display: grid; gap: 10px; align-content: start; }
+.scenario .prob { font-family: var(--f-display); font-size: 34px; font-weight: 700; line-height: 1; }
+.scenario .bar { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.scenario .bar span { display: block; height: 100%; background: var(--ink-2); border-radius: 3px; }
+.scenario p { color: var(--ink-2); font-size: 14px; }
+.scenario.is-likely { border-color: var(--ink-2); }
+
+/* Charts */
+.chart { position: relative; }
+.scroll-x { overflow-x: auto; }
+.scroll-x > .chart { min-width: 620px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--ink-3); font-family: var(--f-data); font-size: 11px; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .zero { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .peakline { stroke: var(--ink-3); stroke-width: 1; }
+.chart .series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .cross { stroke: var(--ink-3); stroke-width: 1; }
+.chart .dot { stroke: var(--surface); stroke-width: 2; }
+.chart .lbl { font-family: var(--f-body); font-size: 12px; font-weight: 600; fill: var(--ink); }
+.chart .lbl-sub { font-family: var(--f-body); font-size: 11px; fill: var(--ink-2); }
+.chart .lbl, .chart .lbl-sub { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 170px; z-index: 5; }
+.tip .t-h { font-weight: 600; margin-bottom: 4px; }
+.tip .t-r { display: flex; justify-content: space-between; gap: 12px; }
+.tip .t-r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.tip .t-r span:last-child { font-family: var(--f-data); }
+.sw { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+.sw.dash { background: none !important; border-top: 2px dashed; height: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw { width: 18px; }
+.multiples { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 860px) { .multiples { grid-template-columns: 1fr; } }
+.multiples .panel { display: grid; gap: 6px; padding: 14px 14px 8px; }
+.note { font-size: 13px; color: var(--ink-3); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+td.num, th.num { text-align: right; }
+.colhead { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Checklist */
+.checks { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.checks li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--rule); }
+.checks .ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.checks .met .ic { background: var(--good-bg); color: var(--good); }
+.checks .unmet .ic { background: var(--crit-bg); color: var(--crit); }
+.checks .detail { font-family: var(--f-data); font-size: 12px; color: var(--ink-3); text-align: right; }
+@media (max-width: 560px) { .checks li { grid-template-columns: 28px 1fr; } .checks .detail { grid-column: 2; text-align: left; } }
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+.two ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--ink-2); }
+.two ul strong { color: var(--ink); }
+.foot { font-size: 13px; color: var(--ink-3); display: grid; gap: 8px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.foot a { color: var(--ink-2); }
+details summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow" id="asof"></div>
+    <h1>Australian housing, 1989–92 vs today</h1>
+    <p class="lede">Home values, interest rates, jobs and inflation lined up on the same clock: months since the national price peak (Dec 1989 then, Mar 2026 now). The model scores today's backdrop, checks the conditions that marked past bottoms, and projects three 12-month paths.</p>
+    <div class="verdict">
+      <div class="panel answer" id="answer"></div>
+      <div class="panel gauge" id="gauge"></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h2>Next 12 months: three paths</h2>
+      <p class="lede">Monthly paths for the national home value index from the latest reading. Probabilities start from a judgement-based prior and tilt with the composite signal each time the tracker is re-run.</p>
+    </div>
+    <div class="scenarios" id="scenarios"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Home values from the peak</h2>
+      <p class="lede">Index, peak = 100. In 1989–92 nominal prices barely fell; 7–8% inflation did the damage in real terms. Today's nominal fall is already larger than the entire 1989–92 nominal drawdown.</p>
+    </div>
+    <div class="legend" id="legend-price"></div>
+    <div class="panel scroll-x"><div class="chart" id="chart-price"></div></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>The drivers, side by side</h2>
+      <p class="lede">Same clock, months from the price peak. Each panel has its own scale.</p>
+    </div>
+    <div class="legend" id="legend-macro"></div>
+    <div class="multiples" id="multiples"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Seven months after the peak, then and now</h2>
+    </div>
+    <div class="panel table-wrap"><table id="compare"></table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Bottom checklist</h2>
+      <p class="lede">The 1991 trough, and the 2019 and early-2023 bottoms, came after most of these turned. A boom needs all five.</p>
+    </div>
+    <ul class="checks" id="checks"></ul>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Composite signal</h2>
+      <p class="lede">Weighted score from −100 (strong downward pressure on prices) to +100. The 1989–92 line shows how the same score moved through that cycle: it turned positive about 2 years after the peak, a year before prices recovered.</p>
+    </div>
+    <div class="legend" id="legend-score"></div>
+    <div class="panel scroll-x"><div class="chart" id="chart-score"></div></div>
+    <div class="panel table-wrap"><table id="indicators"></table></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>What 1989–92 teaches, and where today differs</h2></div>
+    <div class="two">
+      <div class="panel">
+        <h3 style="margin-bottom:10px">Lessons from 1989–92</h3>
+        <ul>
+          <li><strong>Rate cuts came first, the bottom came later.</strong> The RBA cut from January 1990. Nominal prices still slid for about 15 months and real prices for 30.</li>
+          <li><strong>Unemployment drove the depth.</strong> It rose from 5.9% to 11%. Forced sales, not rates alone, kept prices down.</li>
+          <li><strong>No quick boom.</strong> Nominal prices took about 4 years to regain the 1989 peak. The next real boom started in 1996–97.</li>
+          <li><strong>Inflation hid the fall.</strong> Nominal −4%, real about −12% to −15%.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:10px">What is different now</h3>
+        <ul>
+          <li><strong>Debt is about 3× larger.</strong> Household debt is roughly 185% of disposable income versus about 65% in 1989, so a 4.6% cash rate bites about as hard as 17.5% did.</li>
+          <li><strong>The RBA is still hiking.</strong> In mid-1990 it had already cut 2.5 points. Today it has lifted the cash rate 1 point in 2026, with inflation at 4.3%.</li>
+          <li><strong>Prices are falling faster in nominal terms.</strong> About −6% in 7 months, Cotality's fastest pace in 40 years.</li>
+          <li><strong>Jobs are softer, not collapsing.</strong> Unemployment is at 4.7%, a 5-year high but far from 1990's surge.</li>
+          <li><strong>Supply is tight.</strong> Underbuilding and population growth should put a floor under prices sooner than in 1991.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <details>
+      <summary>Method and data</summary>
+      <p style="margin-top:8px">Six indicators are each scored from −1 to +1 and weighted: RBA direction 25%, home value momentum 25%, unemployment momentum 20%, real cash rate 10%, inflation versus target 10%, GDP growth 10%. Real prices deflate the nominal index by CPI. Scenario paths and priors are analyst judgement; every 10 points of composite below −30 moves 3 percentage points of probability from the early-pivot path to the recession path. Re-run <span class="num">python3 tracker/render.py</span> after adding a row to <span class="num">data/current_2024_2026.csv</span>.</p>
+    </details>
+    <p>1988–94 figures are approximate quarterly values reconstructed from RBA, ABS and REIA historical series; treat them as illustrative. 2026 figures are from Cotality's Home Value Index (Jul–Oct 2026), ABS Labour Force (Sep 2026), ABS monthly CPI (Sep 2026) and ABS National Accounts (Jun qtr 2026). Apr–Jun 2026 monthly values are interpolated to match Cotality's −5.2% from-peak reading for September.</p>
+    <p>This is a scenario tool, not financial advice or a prediction of any particular property's value.</p>
+  </footer>
+</main>
+
+<script>
+const D = /*__DATA__*/null;
+
+const $ = (id) => document.getElementById(id);
+const fmtPeriod = (p) => { const [y, m] = p.split("-"); return new Date(+y, +m - 1, 1).toLocaleString("en-AU", { month: "short", year: "numeric" }); };
+const sign = (x, d = 1) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- Header ---------- */
+const cur = D.series.cur, hist = D.series.hist;
+const latest = cur[cur.length - 1];
+const A = D.analogue;
+const base = D.scenarios.find((s) => s.key === "base");
+const bull = D.scenarios.find((s) => s.key === "bull");
+const bear = D.scenarios.find((s) => s.key === "bear");
+const fromPeak = latest.price_index - 100;
+
+$("asof").textContent = `Data to ${fmtPeriod(D.as_of)} · ${A.months_from_peak} months after the peak`;
+$("answer").innerHTML = `
+  <span class="pill tone-${D.regime.tone}">${esc(D.regime.label)}</span>
+  <h2>The drop is already here. A boom is unlikely before late 2027.</h2>
+  <p>National values are <strong>${sign(fromPeak)}%</strong> from the ${fmtPeriod(D.peaks.cur)} peak after seven straight monthly falls. The most likely path (${Math.round(base.probability * 100)}%) has falls continuing until about <strong>${fmtPeriod(base.trough_period)}</strong>, bottoming near <strong>${sign(base.trough_from_peak)}%</strong> from the peak, then flattening.</p>
+  <p>In 1989–92 the bottom only came once the RBA was cutting and unemployment had peaked. None of those conditions is met yet (${D.checklist.filter((c) => c.met).length} of ${D.checklist.length} on the checklist). Watch for the first rate cut: past bottoms came 0–9 months after it.</p>`;
+
+const pos = (v) => `${((v + 100) / 200) * 100}%`;
+$("gauge").innerHTML = `
+  <div class="eyebrow">Composite signal</div>
+  <div class="big num">${sign(D.score_now.composite, 0)}</div>
+  <div class="gauge-track" role="img" aria-label="Composite signal ${D.score_now.composite} on a scale of -100 to +100; 1989-92 at the same stage was ${D.score_then.composite}">
+    <div class="gauge-mark then" style="left:${pos(D.score_then.composite)}" title="1989–92 at same stage"></div>
+    <div class="gauge-mark" style="left:${pos(D.score_now.composite)}"></div>
+  </div>
+  <div class="gauge-scale"><span>−100 downturn</span><span>0</span><span>+100 boom</span></div>
+  <dl class="kv">
+    <dt>Same stage in 1990 (${fmtPeriod(A.then.period)})</dt><dd>${sign(D.score_then.composite, 0)}</dd>
+    <dt>Cash rate</dt><dd>${latest.cash_rate.toFixed(2)}%</dd>
+    <dt>Unemployment</dt><dd>${latest.unemployment.toFixed(1)}%</dd>
+    <dt>CPI, year on year</dt><dd>${latest.cpi_yoy.toFixed(1)}%</dd>
+  </dl>`;
+
+/* ---------- Scenarios ---------- */
+const ordered = [...D.scenarios].sort((a, b) => b.probability - a.probability);
+$("scenarios").innerHTML = ordered.map((s, i) => `
+  <div class="panel scenario${i === 0 ? " is-likely" : ""}">
+    <div class="eyebrow">${i === 0 ? "Most likely" : s.key === "bear" ? "Downside" : "Upside"}</div>
+    <h3>${esc(s.label)}</h3>
+    <div class="prob num">${Math.round(s.probability * 100)}%</div>
+    <div class="bar"><span style="width:${s.probability * 100}%"></span></div>
+    <p>${esc(s.story)}</p>
+    <dl class="kv">
+      <dt>Trough</dt><dd>${fmtPeriod(s.trough_period)}</dd>
+      <dt>Trough vs peak</dt><dd>${sign(s.trough_from_peak)}%</dd>
+      <dt>Change over 12 months</dt><dd>${sign(s.twelve_month_change)}%</dd>
+    </dl>
+  </div>`).join("");
+
+/* ---------- Line chart ---------- */
+function lineChart(el, cfg) {
+  const W = cfg.width || 960, H = cfg.height || 380;
+  const m = { t: 16, r: cfg.right ?? 150, b: 34, l: 44 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const all = cfg.series.flatMap((s) => s.points);
+  const xs = all.map((p) => p.x), ys = all.map((p) => p.y);
+  const x0 = cfg.xMin ?? Math.min(...xs), x1 = cfg.xMax ?? Math.max(...xs);
+  let y0 = cfg.yMin ?? Math.min(...ys), y1 = cfg.yMax ?? Math.max(...ys);
+  const step = cfg.yStep;
+  y0 = Math.floor(y0 / step) * step; y1 = Math.ceil(y1 / step) * step;
+  const sx = (x) => m.l + ((x - x0) / (x1 - x0)) * iw;
+  const sy = (y) => m.t + (1 - (y - y0) / (y1 - y0)) * ih;
+  let g = "";
+  for (let y = y0; y <= y1 + 1e-9; y += step) {
+    g += `<line class="gridline" x1="${m.l}" x2="${m.l + iw}" y1="${sy(y)}" y2="${sy(y)}"/>`;
+    g += `<text x="${m.l - 8}" y="${sy(y) + 4}" text-anchor="end">${cfg.yFmt ? cfg.yFmt(y) : y}</text>`;
+  }
+  if (cfg.zeroAt !== undefined && cfg.zeroAt > y0 && cfg.zeroAt < y1)
+    g += `<line class="zero" x1="${m.l}" x2="${m.l + iw}" y1="${sy(cfg.zeroAt)}" y2="${sy(cfg.zeroAt)}"/>`;
+  const xStep = cfg.xStep || 6;
+  for (let x = Math.ceil(x0 / xStep) * xStep; x <= x1; x += xStep) {
+    g += `<text x="${sx(x)}" y="${H - 12}" text-anchor="middle">${x > 0 ? "+" + x : x}</text>`;
+  }
+  g += `<line class="peakline" x1="${sx(0)}" x2="${sx(0)}" y1="${m.t}" y2="${m.t + ih}"/>`;
+  g += `<text x="${sx(0) + 5}" y="${m.t + 10}" text-anchor="start">peak</text>`;
+  g += `<text x="${m.l + iw}" y="${H - 1}" text-anchor="end">months from price peak</text>`;
+  const labels = [];
+  for (const s of cfg.series) {
+    const d = s.points.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join("");
+    g += `<path class="series" d="${d}" stroke="${s.color}" stroke-width="${s.width || 2}" ${s.dash ? `stroke-dasharray="${s.dash}"` : ""} ${s.opacity ? `opacity="${s.opacity}"` : ""}/>`;
+    const last = s.points[s.points.length - 1];
+    if (s.endDot) g += `<circle class="dot" cx="${sx(last.x)}" cy="${sy(last.y)}" r="5" fill="${s.color}"/>`;
+    if (s.label) labels.push({ y: sy(last.y), x: sx(last.x), s });
+  }
+  // direct labels at line ends, nudged apart
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 26) labels[i].y = labels[i - 1].y + 26;
+  for (const L of labels) {
+    g += `<text class="lbl" x="${L.x + 9}" y="${L.y + 2}">${esc(L.s.label)}</text>`;
+    if (L.s.sub) g += `<text class="lbl-sub" x="${L.x + 9}" y="${L.y + 15}">${esc(L.s.sub)}</text>`;
+  }
+  g += `<line class="cross" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/>`;
+  g += `<rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent" class="hit"/>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.aria)}">${g}</svg><div class="tip" hidden></div>`;
+
+  const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), cross = svg.querySelector(".cross");
+  const move = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((ev.clientX - r.left) / r.width) * W;
+    const xv = Math.round(x0 + ((px - m.l) / iw) * (x1 - x0));
+    const rows = [];
+    for (const s of cfg.series) {
+      if (s.noTip) continue;
+      let best = null;
+      for (const p of s.points) if (p.x <= xv && (!best || p.x > best.x)) best = p;
+      if (best && xv - best.x <= (s.maxGap ?? 3)) rows.push({ s, p: best });
+    }
+    if (!rows.length) { tip.hidden = true; cross.setAttribute("visibility", "hidden"); return; }
+    cross.setAttribute("x1", sx(xv)); cross.setAttribute("x2", sx(xv)); cross.setAttribute("visibility", "visible");
+    tip.innerHTML = `<div class="t-h">${xv > 0 ? "+" : ""}${xv} months from peak</div>` + rows.map(({ s, p }) =>
+      `<div class="t-r"><span><i class="sw${s.dash ? " dash" : ""}" style="background:${s.color};border-color:${s.color}"></i>${esc(s.tipName || s.label)} · ${fmtPeriod(p.period)}</span><span>${cfg.tipFmt(p.y)}</span></div>`).join("");
+    tip.hidden = false;
+    const left = ev.clientX - r.left;
+    const tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(r.width - tw, left + 14 > r.width - tw ? left - tw - 14 : left + 14)) + "px";
+    tip.style.top = Math.max(0, ev.clientY - r.top - 40) + "px";
+  };
+  const hit = svg.querySelector(".hit");
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+}
+
+function legend(el, items) {
+  el.innerHTML = items.map((i) => `<span><i class="sw${i.dash ? " dash" : ""}" style="background:${i.color};border-color:${i.color}"></i>${esc(i.name)}</span>`).join("");
+}
+
+function render() {
+  const NOW = css("--now"), THEN = css("--then"), INK2 = css("--ink-2");
+  const pts = (rows, f) => rows.map((r) => ({ x: r.months_from_peak, y: f(r), period: r.period }));
+  const xMin = -24, xMax = 60;
+  const histWin = hist.filter((r) => r.months_from_peak >= xMin);
+
+  // Price chart
+  const start = { x: latest.months_from_peak, y: latest.price_index, period: latest.period };
+  const scen = (s) => [start, ...s.path.map((p) => ({ x: p.months_from_peak, y: p.index, period: p.period }))];
+  const priceSeries = [
+    { label: "1989–92 nominal", tipName: "1989–92 nominal", color: THEN, points: pts(histWin, (r) => r.price_index) },
+    { label: "1989–92 real", tipName: "1989–92 real", sub: "after inflation", color: THEN, dash: "5 4", points: pts(histWin, (r) => r.real_index) },
+    { label: "Today", sub: fmtPeriod(latest.period), color: NOW, width: 2.5, endDot: true, points: pts(cur.filter((r) => r.months_from_peak >= xMin), (r) => r.price_index), maxGap: 1 },
+    { label: `${base.label}`, tipName: "Base path", sub: `${Math.round(base.probability * 100)}%`, color: NOW, dash: "4 4", points: scen(base), maxGap: 1 },
+    { label: `${bull.label}`, tipName: "Early pivot", sub: `${Math.round(bull.probability * 100)}%`, color: NOW, dash: "1 4", opacity: 0.8, points: scen(bull), maxGap: 1 },
+    { label: `${bear.label}`, tipName: "Recession path", sub: `${Math.round(bear.probability * 100)}%`, color: NOW, dash: "1 4", opacity: 0.8, points: scen(bear), maxGap: 1 },
+  ];
+  // Scenario labels sit at month +19; history labels at +60. Move scenario labels into the plot by keeping right margin.
+  legend($("legend-price"), [
+    { name: "1989–92 nominal", color: THEN }, { name: "1989–92 real (after inflation)", color: THEN, dash: true },
+    { name: "Today", color: NOW }, { name: "12-month scenarios", color: NOW, dash: true },
+  ]);
+  lineChart($("chart-price"), {
+    series: priceSeries, xMin, xMax, yMin: 70, yMax: 105, yStep: 5, zeroAt: 100, height: 420, right: 150,
+    yFmt: (y) => y, tipFmt: (y) => `${y.toFixed(1)} (${sign(y - 100)}%)`,
+    aria: "Line chart of home value indexes, peak equals 100, for 1989-92 and today with three scenario paths",
+  });
+
+  // Small multiples
+  const macro = [
+    { key: "cash_rate", title: "RBA cash rate", unit: "%", step: 4, min: 0 },
+    { key: "unemployment", title: "Unemployment rate", unit: "%", step: 2, min: 2 },
+    { key: "cpi_yoy", title: "Inflation (CPI, year on year)", unit: "%", step: 2, min: 0 },
+  ];
+  legend($("legend-macro"), [{ name: "1989–92", color: THEN }, { name: "Today", color: NOW }]);
+  $("multiples").innerHTML = macro.map((m) => `<div class="panel"><h3>${m.title}</h3><div class="chart" id="mx-${m.key}"></div></div>`).join("");
+  for (const mc of macro) {
+    lineChart($(`mx-${mc.key}`), {
+      series: [
+        { tipName: "1989–92", color: THEN, points: pts(histWin, (r) => r[mc.key]) },
+        { label: "Today", color: NOW, width: 2.5, endDot: true, points: pts(cur.filter((r) => r.months_from_peak >= xMin), (r) => r[mc.key]), maxGap: 1 },
+      ],
+      xMin, xMax, yMin: mc.min, yStep: mc.step, width: 340, height: 230, right: 12, xStep: 24,
+      yFmt: (y) => y + "%", tipFmt: (y) => y.toFixed(2).replace(/0$/, "") + "%",
+      aria: `${mc.title}, 1989-92 versus today, by months from the price peak`,
+    });
+  }
+
+  // Score chart
+  legend($("legend-score"), [{ name: "1989–92", color: THEN }, { name: "Today", color: NOW }]);
+  lineChart($("chart-score"), {
+    series: [
+      { label: "1989–92", color: THEN, points: D.score_history_hist.filter((r) => r.months_from_peak >= xMin).map((r) => ({ x: r.months_from_peak, y: r.hist, period: r.period })) },
+      { label: "Today", sub: sign(D.score_now.composite, 0), color: NOW, width: 2.5, endDot: true, maxGap: 1, points: D.score_history.filter((r) => r.months_from_peak >= xMin).map((r) => ({ x: r.months_from_peak, y: r.cur, period: r.period })) },
+    ],
+    xMin, xMax, yMin: -100, yMax: 100, yStep: 25, zeroAt: 0, height: 300, right: 90,
+    yFmt: (y) => (y > 0 ? "+" : "") + y, tipFmt: (y) => sign(y, 0),
+    aria: "Composite signal over time for both cycles",
+  });
+}
+render();
+const mq = window.matchMedia("(prefers-color-scheme: dark)");
+mq.addEventListener?.("change", render);
+new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+/* ---------- Tables ---------- */
+const T = A.then, N = latest, L = A.twelve_months_later;
+const row = (label, then, now, later) => `<tr><td>${label}</td><td class="num">${then}</td><td class="num">${now}</td><td class="num">${later}</td></tr>`;
+const head = (c, t) => `<span class="colhead"><i class="sw" style="background:var(${c});width:14px"></i>${t}</span>`;
+$("compare").innerHTML = `<thead><tr><th></th><th class="num">${head("--then", fmtPeriod(T.period))}</th><th class="num">${head("--now", fmtPeriod(N.period))}</th><th class="num">${head("--then", fmtPeriod(L.period) + " (1 yr on)")}</th></tr></thead><tbody>
+  ${row("Home values vs peak (nominal)", sign(T.price_index - 100) + "%", sign(N.price_index - 100) + "%", sign(L.price_index - 100) + "%")}
+  ${row("Home values vs peak (real)", sign(T.real_index - 100) + "%", sign(N.real_index - 100) + "%", sign(L.real_index - 100) + "%")}
+  ${row("RBA cash rate", T.cash_rate.toFixed(2) + "%", N.cash_rate.toFixed(2) + "%", L.cash_rate.toFixed(2) + "%")}
+  ${row("Typical variable mortgage rate", T.mortgage_rate.toFixed(2) + "%", N.mortgage_rate.toFixed(2) + "%", L.mortgage_rate.toFixed(2) + "%")}
+  ${row("Unemployment", T.unemployment.toFixed(1) + "%", N.unemployment.toFixed(1) + "%", L.unemployment.toFixed(1) + "%")}
+  ${row("CPI, year on year", T.cpi_yoy.toFixed(1) + "%", N.cpi_yoy.toFixed(1) + "%", L.cpi_yoy.toFixed(1) + "%")}
+  ${row("GDP, year on year", sign(T.gdp_yoy) + "%", sign(N.gdp_yoy) + "%", sign(L.gdp_yoy) + "%")}
+  ${row("Household debt to income (approx.)", "~65%", "~185%", "~65%")}
+  ${row("Composite signal", sign(D.score_then.composite, 0), sign(D.score_now.composite, 0), "")}
+</tbody>`;
+
+$("checks").innerHTML = D.checklist.map((c) => `<li class="${c.met ? "met" : "unmet"}"><span class="ic" aria-label="${c.met ? "met" : "not met"}">${c.met ? "✓" : "✕"}</span><span>${esc(c.rule)}</span><span class="detail">${esc(c.detail)}</span></li>`).join("");
+
+const tone = (s) => (s <= -0.5 ? "critical" : s < 0 ? "warning" : s < 0.3 ? "neutral" : "good");
+$("indicators").innerHTML = `<thead><tr><th>Indicator</th><th class="num">Weight</th><th class="num">${head("--then", "1990 value")}</th><th class="num">${head("--now", "Now")}</th><th class="num">Score now</th></tr></thead><tbody>` +
+  D.score_now.indicators.map((i, k) => {
+    const t = D.score_then.indicators[k];
+    return `<tr><td>${esc(i.label)}</td><td class="num">${Math.round(i.weight * 100)}%</td><td class="num">${esc(t.value)}</td><td class="num">${esc(i.value)}</td><td class="num"><span class="pill tone-${tone(i.score)}">${sign(i.score, 2)}</span></td></tr>`;
+  }).join("") + "</tbody>";
+</script>
