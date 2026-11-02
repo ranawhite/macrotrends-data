@@ -1,4 +1,4 @@
-"""Render the tracker: writes docs/index.html and prints a text summary.
+"""Render the tracker: writes docs/index.html (Australia + Sydney) and prints text summaries.
 
 Usage:  python3 tracker/render.py
 """
@@ -19,7 +19,7 @@ OUT = ROOT / "docs" / "index.html"
 def summary(d: dict) -> str:
     a = d["analogue"]
     lines = [
-        f"AU property cycle tracker  (data to {d['as_of']})",
+        f"{d['name']} property cycle tracker  (data to {d['as_of']})",
         f"Regime: {d['regime']['label']}   composite signal {d['score_now']['composite']:+d} "
         f"(1989-92 at same stage: {d['score_then']['composite']:+d})",
         f"Months since price peak: {a['months_from_peak']}",
@@ -47,11 +47,11 @@ def summary(d: dict) -> str:
 
 
 def main() -> None:
-    d = model.build()
-    html = TEMPLATE.read_text().replace("/*__DATA__*/null", json.dumps(d, separators=(",", ":")))
+    data = model.build_all()
+    html = TEMPLATE.read_text().replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html)
-    print(summary(d))
+    print("\n\n".join(summary(data["regions"][k]) for k in data["order"]))
     print(f"\nWrote {OUT.relative_to(ROOT)}")
 
 

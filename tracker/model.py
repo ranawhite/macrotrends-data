@@ -194,12 +194,12 @@ def checklist(cycle: Cycle) -> list[dict]:
 
 
 # --------------------------------------------------------------------------
-# 12-month scenarios. Paths are monthly % changes in the national index.
+# 12-month scenarios. Paths are monthly % changes in each region's index.
 # Probabilities start from a judgement-based prior and tilt with the
 # composite score so that a re-run on fresh data moves them.
 # --------------------------------------------------------------------------
 
-SCENARIOS = {
+NATIONAL_SCENARIOS = {
     "bull": {
         "label": "Early pivot",
         "story": "Inflation drops back faster than expected; RBA holds then cuts by mid-2027. "
@@ -223,8 +223,34 @@ SCENARIOS = {
     },
 }
 
+# Sydney is the most rate-sensitive capital (largest loans relative to income),
+# so its falls are steeper and it also tends to lead the recovery once rates fall.
+SYDNEY_SCENARIOS = {
+    "bull": {
+        "label": "Early pivot",
+        "story": "Inflation cools and the RBA signals cuts early in 2027. Sydney, which fell "
+                 "first and hardest, bottoms around Jan 2027 and leads the rebound.",
+        "path": [-1.0, -0.6, -0.3, 0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.8, 0.8, 0.8],
+        "prior": 0.20,
+    },
+    "base": {
+        "label": "Grinding correction",
+        "story": "A long hold at a high cash rate. Monthly falls ease from about 1.5% to zero "
+                 "by mid-2027. Trough around May-Jun 2027, roughly 15% below the Feb 2026 peak.",
+        "path": [-1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.3, 0.4, 0.4],
+        "prior": 0.55,
+    },
+    "bear": {
+        "label": "1990-style recession",
+        "story": "Job losses spread to finance and professional services, forced sales rise and "
+                 "the RBA cuts late. Sydney keeps sliding through 2027 to more than 20% below peak.",
+        "path": [-1.7, -1.6, -1.5, -1.4, -1.2, -1.1, -1.0, -0.9, -0.8, -0.6, -0.5, -0.4],
+        "prior": 0.25,
+    },
+}
 
-def scenarios(cycle: Cycle, composite: int) -> list[dict]:
+
+def scenarios(cycle: Cycle, composite: int, SCENARIOS: dict) -> list[dict]:
     # Tilt: every 10 points of composite below -30 moves 3pp from bull to bear;
     # every 10 points above -30 moves 3pp the other way. Bounded.
     tilt = clamp((-30 - composite) / 10 * 0.03, -0.15, 0.15)
@@ -239,7 +265,6 @@ def scenarios(cycle: Cycle, composite: int) -> list[dict]:
     for key, sc in SCENARIOS.items():
         level = start.price_index
         path = []
-        y, m = divmod(start.month, 12)
         trough = (level, start.period)
         for i, pct in enumerate(sc["path"], start=1):
             level *= 1 + pct / 100
@@ -283,20 +308,48 @@ def analogue(hist: Cycle, cur: Cycle) -> dict:
     }
 
 
-def build() -> dict:
-    # The 1989-92 cycle peaked in Dec 1989; prices passed that level again in 1993-94.
-    hist = load(DATA / "cycle_1988_1994.csv", "1989-92", peak_period="1989-12")
-    cur = load(DATA / "current_2024_2026.csv", "2026")
+REGIONS = {
+    "national": {
+        "name": "Australia",
+        "place": "national",
+        "hist_csv": "cycle_1988_1994.csv",
+        "hist_peak": "1989-12",
+        "cur_csv": "current_2024_2026.csv",
+        "cur_peak": None,
+        "jobs_label": "Unemployment (national)",
+        "scenarios": NATIONAL_SCENARIOS,
+    },
+    "sydney": {
+        "name": "Sydney",
+        "place": "Sydney",
+        "hist_csv": "sydney_1988_1994.csv",
+        "hist_peak": "1989-09",
+        "cur_csv": "sydney_2024_2026.csv",
+        "cur_peak": "2026-02",
+        "jobs_label": "Unemployment (NSW)",
+        "scenarios": SYDNEY_SCENARIOS,
+    },
+}
+
+
+def build(region: str = "national") -> dict:
+    cfg = REGIONS[region]
+    hist = load(DATA / cfg["hist_csv"], "1989-92", peak_period=cfg["hist_peak"])
+    cur = load(DATA / cfg["cur_csv"], "2026", peak_period=cfg["cur_peak"])
     sc_now = score(cur, cur.latest)
     sc_then = score(hist, hist.at_offset(cur.latest.months_from_peak))
     label, tone = regime(sc_now["composite"])
     return {
+        "region": region,
+        "name": cfg["name"],
+        "place": cfg["place"],
+        "jobs_label": cfg["jobs_label"],
         "as_of": cur.latest.period,
         "regime": {"label": label, "tone": tone},
         "score_now": sc_now,
         "score_then": sc_then,
         "checklist": checklist(cur),
-        "scenarios": scenarios(cur, sc_now["composite"]),
+        "scenarios": scenarios(cur, sc_now["composite"], cfg["scenarios"]),
         "analogue": analogue(hist, cur),
         "series": {
             "hist": [vars(r) for r in hist.rows],
@@ -314,6 +367,10 @@ def build() -> dict:
             for r in hist.rows
         ],
     }
+
+
+def build_all() -> dict:
+    return {"order": list(REGIONS), "regions": {k: build(k) for k in REGIONS}}
 
 
 if __name__ == "__main__":  # pragma: no cover

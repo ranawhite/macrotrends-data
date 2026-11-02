@@ -1,8 +1,9 @@
 # Australian Property Cycle Tracker
 
-Compares today's Australian housing downturn with the 1989–92 recession cycle.
-Both cycles are lined up by **months since the national price peak**
-(Dec 1989, Mar 2026). The tracker:
+Compares today's housing downturn with the 1989–92 recession cycle, for
+**Australia** and **Sydney** (switch with the toggle at the top of the dashboard,
+or open `docs/index.html#sydney`). Each cycle is lined up by **months since its
+price peak** (national: Dec 1989 and Mar 2026; Sydney: Sep 1989 and Feb 2026). The tracker:
 
 - scores the current macro backdrop (RBA direction, real cash rate, unemployment
   momentum, home value momentum, inflation, GDP) into a composite signal from −100 to +100,
@@ -21,7 +22,8 @@ No third-party packages are needed. Open `docs/index.html` in a browser.
 
 ## Update with new data
 
-Append a row to `data/current_2024_2026.csv` each month (period `YYYY-MM`,
+Append a row to `data/current_2024_2026.csv` (national) or
+`data/sydney_2024_2026.csv` (Sydney, with NSW unemployment and index Feb 2026 = 100) each month (period `YYYY-MM`,
 cash rate, mortgage rate, unemployment, CPI y/y, GDP y/y, home value index with
 Mar 2026 = 100) and re-run. A month's index is last month's × (1 + Cotality monthly change).
 
@@ -31,7 +33,9 @@ Mar 2026 = 100) and re-run. A month's index is last month's × (1 + Cotality mon
 |---|---|
 | `data/cycle_1988_1994.csv` | 1988–94 quarterly cycle (approximate, reconstructed from RBA/ABS/REIA series; illustrative) |
 | `data/current_2024_2026.csv` | 2024–26 data (Cotality HVI, ABS Labour Force, ABS CPI, ABS National Accounts, RBA) |
-| `tracker/model.py` | Alignment, scoring, checklist, scenarios |
+| `data/sydney_1988_1994.csv` | Sydney 1988–94 cycle with NSW unemployment (approximate; illustrative) |
+| `data/sydney_2024_2026.csv` | Sydney 2024–26 (Cotality Sydney readings, NSW unemployment from Jobs and Skills Australia; gaps interpolated) |
+| `tracker/model.py` | Alignment, scoring, checklist, scenarios; `REGIONS` holds each market's files, peak and scenario paths |
 | `tracker/render.py` | Builds the dashboard and text summary |
 | `tracker/template.html` | Dashboard template |
 

@@ -53,6 +53,10 @@ h3 { font-size: 16px; font-weight: 700; }
 p { margin: 0; }
 .eyebrow { font-family: var(--f-data); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .lede { color: var(--ink-2); max-width: 68ch; }
+.toggle { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--neutral-bg); width: fit-content; }
+.toggle button { font: 600 14px var(--f-body); color: var(--ink-2); background: transparent; border: 0; border-radius: 8px; padding: 7px 16px; cursor: pointer; }
+.toggle button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.toggle button:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
 .num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
 section { display: grid; gap: 16px; min-width: 0; }
 .section-head { display: grid; gap: 6px; }
@@ -153,9 +157,13 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
 
 <main>
   <header>
+    <div class="toggle" role="group" aria-label="Market">
+      <button type="button" id="btn-national" data-region="national">Australia</button>
+      <button type="button" id="btn-sydney" data-region="sydney">Sydney</button>
+    </div>
     <div class="eyebrow" id="asof"></div>
-    <h1>Australian housing, 1989–92 vs today</h1>
-    <p class="lede">Home values, interest rates, jobs and inflation lined up on the same clock: months since the national price peak (Dec 1989 then, Mar 2026 now). The model scores today's backdrop, checks the conditions that marked past bottoms, and projects three 12-month paths.</p>
+    <h1 id="title">Australian housing, 1989–92 vs today</h1>
+    <p class="lede" id="intro"></p>
     <div class="verdict">
       <div class="panel answer" id="answer"></div>
       <div class="panel gauge" id="gauge"></div>
@@ -165,7 +173,7 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
   <section>
     <div class="section-head">
       <h2>Next 12 months: three paths</h2>
-      <p class="lede">Monthly paths for the national home value index from the latest reading. Probabilities start from a judgement-based prior and tilt with the composite signal each time the tracker is re-run.</p>
+      <p class="lede"><span id="scen-place">Monthly paths for the national home value index</span> from the latest reading. Probabilities start from a judgement-based prior and tilt with the composite signal each time the tracker is re-run.</p>
     </div>
     <div class="scenarios" id="scenarios"></div>
   </section>
@@ -173,7 +181,7 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
   <section>
     <div class="section-head">
       <h2>Home values from the peak</h2>
-      <p class="lede">Index, peak = 100. In 1989–92 nominal prices barely fell; 7–8% inflation did the damage in real terms. Today's nominal fall is already larger than the entire 1989–92 nominal drawdown.</p>
+      <p class="lede" id="price-lede"></p>
     </div>
     <div class="legend" id="legend-price"></div>
     <div class="panel scroll-x"><div class="chart" id="chart-price"></div></div>
@@ -190,7 +198,7 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
 
   <section>
     <div class="section-head">
-      <h2>Seven months after the peak, then and now</h2>
+      <h2 id="compare-h">Months after the peak, then and now</h2>
     </div>
     <div class="panel table-wrap"><table id="compare"></table></div>
   </section>
@@ -218,22 +226,11 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
     <div class="two">
       <div class="panel">
         <h3 style="margin-bottom:10px">Lessons from 1989–92</h3>
-        <ul>
-          <li><strong>Rate cuts came first, the bottom came later.</strong> The RBA cut from January 1990. Nominal prices still slid for about 15 months and real prices for 30.</li>
-          <li><strong>Unemployment drove the depth.</strong> It rose from 5.9% to 11%. Forced sales, not rates alone, kept prices down.</li>
-          <li><strong>No quick boom.</strong> Nominal prices took about 4 years to regain the 1989 peak. The next real boom started in 1996–97.</li>
-          <li><strong>Inflation hid the fall.</strong> Nominal −4%, real about −12% to −15%.</li>
-        </ul>
+        <ul id="lessons"></ul>
       </div>
       <div class="panel">
         <h3 style="margin-bottom:10px">What is different now</h3>
-        <ul>
-          <li><strong>Debt is about 3× larger.</strong> Household debt is roughly 185% of disposable income versus about 65% in 1989, so a 4.6% cash rate bites about as hard as 17.5% did.</li>
-          <li><strong>The RBA is still hiking.</strong> In mid-1990 it had already cut 2.5 points. Today it has lifted the cash rate 1 point in 2026, with inflation at 4.3%.</li>
-          <li><strong>Prices are falling faster in nominal terms.</strong> About −6% in 7 months, Cotality's fastest pace in 40 years.</li>
-          <li><strong>Jobs are softer, not collapsing.</strong> Unemployment is at 4.7%, a 5-year high but far from 1990's surge.</li>
-          <li><strong>Supply is tight.</strong> Underbuilding and population growth should put a floor under prices sooner than in 1991.</li>
-        </ul>
+        <ul id="diffs"></ul>
       </div>
     </div>
   </section>
@@ -243,13 +240,13 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
       <summary>Method and data</summary>
       <p style="margin-top:8px">Six indicators are each scored from −1 to +1 and weighted: RBA direction 25%, home value momentum 25%, unemployment momentum 20%, real cash rate 10%, inflation versus target 10%, GDP growth 10%. Real prices deflate the nominal index by CPI. Scenario paths and priors are analyst judgement; every 10 points of composite below −30 moves 3 percentage points of probability from the early-pivot path to the recession path. Re-run <span class="num">python3 tracker/render.py</span> after adding a row to <span class="num">data/current_2024_2026.csv</span>.</p>
     </details>
-    <p>1988–94 figures are approximate quarterly values reconstructed from RBA, ABS and REIA historical series; treat them as illustrative. 2026 figures are from Cotality's Home Value Index (Jul–Oct 2026), ABS Labour Force (Sep 2026), ABS monthly CPI (Sep 2026) and ABS National Accounts (Jun qtr 2026). Apr–Jun 2026 monthly values are interpolated to match Cotality's −5.2% from-peak reading for September.</p>
+    <p>1988–94 figures are approximate quarterly values reconstructed from RBA, ABS and REIA historical series; treat them as illustrative. 2026 figures are from Cotality's Home Value Index (Jul–Oct 2026), ABS Labour Force (Sep 2026), ABS monthly CPI (Sep 2026) and ABS National Accounts (Jun qtr 2026). Apr–Jun 2026 monthly values are interpolated to match Cotality's −5.2% from-peak reading for September. Sydney 2026 values are built from Cotality's Sydney readings (−1.2% in June, 7.1% below peak in August, more than 10% below peak in October, −7.0% over the year to September) with NSW unemployment from Jobs and Skills Australia; months between those readings are interpolated. Sydney 1988–94 values are approximate, from REIA and NSW Valuer-General median series. Cash rate, CPI and GDP are national in both views.</p>
     <p>This is a scenario tool, not financial advice or a prediction of any particular property's value.</p>
   </footer>
 </main>
 
 <script>
-const D = /*__DATA__*/null;
+const ALL = /*__DATA__*/null;
 
 const $ = (id) => document.getElementById(id);
 const fmtPeriod = (p) => { const [y, m] = p.split("-"); return new Date(+y, +m - 1, 1).toLocaleString("en-AU", { month: "short", year: "numeric" }); };
@@ -257,24 +254,77 @@ const sign = (x, d = 1) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFi
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-/* ---------- Header ---------- */
-const cur = D.series.cur, hist = D.series.hist;
-const latest = cur[cur.length - 1];
-const A = D.analogue;
-const base = D.scenarios.find((s) => s.key === "base");
-const bull = D.scenarios.find((s) => s.key === "bull");
-const bear = D.scenarios.find((s) => s.key === "bear");
-const fromPeak = latest.price_index - 100;
+const COPY = {
+  national: {
+    title: "Australian housing, 1989–92 vs today",
+    headline: "The drop is already here. A boom is unlikely before late 2027.",
+    subject: "National values",
+    lessons: [
+      "<strong>Rate cuts came first, the bottom came later.</strong> The RBA cut from January 1990. Nominal prices still slid for about 15 months and real prices for 30.",
+      "<strong>Unemployment drove the depth.</strong> It rose from 5.9% to 11%. Forced sales, not rates alone, kept prices down.",
+      "<strong>No quick boom.</strong> Nominal prices took about 4 years to regain the 1989 peak. The next real boom started in 1996–97.",
+      "<strong>Inflation hid the fall.</strong> Nominal −4%, real about −12% to −15%.",
+    ],
+    diffs: [
+      "<strong>Debt is about 3× larger.</strong> Household debt is roughly 185% of disposable income versus about 65% in 1989, so a 4.6% cash rate bites about as hard as 17.5% did.",
+      "<strong>The RBA is still hiking.</strong> In mid-1990 it had already cut 2.5 points. Today it has lifted the cash rate 1 point in 2026, with inflation at 4.3%.",
+      "<strong>Prices are falling faster in nominal terms.</strong> About −6% in 7 months, Cotality's fastest pace in 40 years.",
+      "<strong>Jobs are softer, not collapsing.</strong> Unemployment is at 4.7%, a 5-year high but far from 1990's surge.",
+      "<strong>Supply is tight.</strong> Underbuilding and population growth should put a floor under prices sooner than in 1991.",
+    ],
+  },
+  sydney: {
+    title: "Sydney housing, 1989–92 vs today",
+    headline: "Sydney is falling fastest. A boom is unlikely before late 2027.",
+    subject: "Sydney values",
+    lessons: [
+      "<strong>Sydney boomed hardest and peaked first.</strong> Values rose about 60% in 1987–89 and topped out around September 1989, a quarter before the national peak.",
+      "<strong>A bigger fall than the nation.</strong> Sydney's nominal fall was about 7% and its real fall about 17%, against about 4% and 12% nationally.",
+      "<strong>Jobs set the floor.</strong> NSW unemployment rose from 5.4% to 10.4%. Nominal prices stopped falling in 1991 but stayed flat until unemployment peaked in late 1992.",
+      "<strong>Four and a half years to recover.</strong> Sydney regained its 1989 nominal peak around March 1994, just before the RBA started hiking again.",
+    ],
+    diffs: [
+      "<strong>The fall is much faster.</strong> Sydney is more than 10% below its February 2026 peak after 8 months. In 1989–92 the whole nominal fall was about 7% over 18 months.",
+      "<strong>Sydney is the most rate-sensitive market.</strong> With the median dwelling near $1.18m, loans are the largest relative to incomes, so each RBA hike hits hardest here.",
+      "<strong>NSW jobs are holding.</strong> State unemployment has eased from about 4.7% in May to about 4.2%. That is the main reason a 1990-style collapse is not the base case.",
+      "<strong>The RBA is still hiking.</strong> In early 1990 it had already started cutting. Today the cash rate is 4.60% and rising, with inflation at 4.3%.",
+      "<strong>Sydney usually turns first.</strong> It led the recoveries in 2019 and 2023 once rates stopped rising. Expect the same when the RBA pivots.",
+    ],
+  },
+};
 
-$("asof").textContent = `Data to ${fmtPeriod(D.as_of)} · ${A.months_from_peak} months after the peak`;
-$("answer").innerHTML = `
+let REGION, D, cur, hist, latest, A, base, bull, bear;
+
+function paintText() {
+  const C = COPY[REGION];
+  const fromPeak = latest.price_index - 100;
+  let falls = 0;
+  for (let i = cur.length - 1; i > 0; i--) {
+    const a = cur[i], b = cur[i - 1];
+    const gap = (+a.period.slice(0, 4) * 12 + +a.period.slice(5)) - (+b.period.slice(0, 4) * 12 + +b.period.slice(5));
+    if (gap !== 1 || a.price_index >= b.price_index) break;
+    falls++;
+  }
+  const met = D.checklist.filter((c) => c.met);
+  document.title = REGION === "sydney" ? "Sydney Property Cycle Tracker" : "Aussie Property Cycle Tracker";
+  $("title").textContent = C.title;
+  $("intro").textContent = `Home values, interest rates, jobs and inflation lined up on the same clock: months since the ${D.place} price peak (${fmtPeriod(D.peaks.hist)} then, ${fmtPeriod(D.peaks.cur)} now). The model scores today's backdrop, checks the conditions that marked past bottoms, and projects three 12-month paths.`;
+  $("scen-place").textContent = `Monthly paths for the ${D.place} home value index`;
+  const H = D.analogue;
+  $("price-lede").textContent = `Index, peak = 100. In 1989–92 ${D.place} nominal prices fell only ${Math.abs(H.hist_trough_nominal.from_peak)}%; 7–8% inflation took the real fall to about ${Math.abs(H.hist_trough_real.from_peak)}%. Today's nominal fall (${sign(fromPeak)}%) is already ${Math.abs(fromPeak) > Math.abs(H.hist_trough_nominal.from_peak) ? "larger than" : "close to"} the entire 1989–92 nominal drawdown.`;
+  $("compare-h").textContent = `${A.months_from_peak} months after the peak, then and now`;
+  $("lessons").innerHTML = C.lessons.map((l) => `<li>${l}</li>`).join("");
+  $("diffs").innerHTML = C.diffs.map((l) => `<li>${l}</li>`).join("");
+
+  $("asof").textContent = `Data to ${fmtPeriod(D.as_of)} · ${A.months_from_peak} months after the peak`;
+  $("answer").innerHTML = `
   <span class="pill tone-${D.regime.tone}">${esc(D.regime.label)}</span>
-  <h2>The drop is already here. A boom is unlikely before late 2027.</h2>
-  <p>National values are <strong>${sign(fromPeak)}%</strong> from the ${fmtPeriod(D.peaks.cur)} peak after seven straight monthly falls. The most likely path (${Math.round(base.probability * 100)}%) has falls continuing until about <strong>${fmtPeriod(base.trough_period)}</strong>, bottoming near <strong>${sign(base.trough_from_peak)}%</strong> from the peak, then flattening.</p>
-  <p>In 1989–92 the bottom only came once the RBA was cutting and unemployment had peaked. None of those conditions is met yet (${D.checklist.filter((c) => c.met).length} of ${D.checklist.length} on the checklist). Watch for the first rate cut: past bottoms came 0–9 months after it.</p>`;
+  <h2>${C.headline}</h2>
+  <p>${C.subject} are <strong>${sign(fromPeak)}%</strong> from the ${fmtPeriod(D.peaks.cur)} peak after ${falls} straight monthly falls. The most likely path (${Math.round(base.probability * 100)}%) has falls continuing until about <strong>${fmtPeriod(base.trough_period)}</strong>, bottoming near <strong>${sign(base.trough_from_peak)}%</strong> from the peak, then flattening.</p>
+  <p>In 1989–92 the bottom only came once the RBA was cutting and unemployment had peaked. ${met.length} of ${D.checklist.length} bottom conditions are met${met.length ? ` (${met.map((c) => c.rule.toLowerCase()).join("; ")})` : ""}. Watch for the first rate cut: past bottoms came 0–9 months after it.</p>`;
 
-const pos = (v) => `${((v + 100) / 200) * 100}%`;
-$("gauge").innerHTML = `
+  const pos = (v) => `${((v + 100) / 200) * 100}%`;
+  $("gauge").innerHTML = `
   <div class="eyebrow">Composite signal</div>
   <div class="big num">${sign(D.score_now.composite, 0)}</div>
   <div class="gauge-track" role="img" aria-label="Composite signal ${D.score_now.composite} on a scale of -100 to +100; 1989-92 at the same stage was ${D.score_then.composite}">
@@ -283,15 +333,14 @@ $("gauge").innerHTML = `
   </div>
   <div class="gauge-scale"><span>−100 downturn</span><span>0</span><span>+100 boom</span></div>
   <dl class="kv">
-    <dt>Same stage in 1990 (${fmtPeriod(A.then.period)})</dt><dd>${sign(D.score_then.composite, 0)}</dd>
+    <dt>Same stage in 1989–92 (${fmtPeriod(A.then.period)})</dt><dd>${sign(D.score_then.composite, 0)}</dd>
     <dt>Cash rate</dt><dd>${latest.cash_rate.toFixed(2)}%</dd>
-    <dt>Unemployment</dt><dd>${latest.unemployment.toFixed(1)}%</dd>
+    <dt>${esc(D.jobs_label)}</dt><dd>${latest.unemployment.toFixed(1)}%</dd>
     <dt>CPI, year on year</dt><dd>${latest.cpi_yoy.toFixed(1)}%</dd>
   </dl>`;
 
-/* ---------- Scenarios ---------- */
-const ordered = [...D.scenarios].sort((a, b) => b.probability - a.probability);
-$("scenarios").innerHTML = ordered.map((s, i) => `
+  const ordered = [...D.scenarios].sort((a, b) => b.probability - a.probability);
+  $("scenarios").innerHTML = ordered.map((s, i) => `
   <div class="panel scenario${i === 0 ? " is-likely" : ""}">
     <div class="eyebrow">${i === 0 ? "Most likely" : s.key === "bear" ? "Downside" : "Upside"}</div>
     <h3>${esc(s.label)}</h3>
@@ -304,6 +353,7 @@ $("scenarios").innerHTML = ordered.map((s, i) => `
       <dt>Change over 12 months</dt><dd>${sign(s.twelve_month_change)}%</dd>
     </dl>
   </div>`).join("");
+}
 
 /* ---------- Line chart ---------- */
 function lineChart(el, cfg) {
@@ -405,7 +455,7 @@ function render() {
     { name: "Today", color: NOW }, { name: "12-month scenarios", color: NOW, dash: true },
   ]);
   lineChart($("chart-price"), {
-    series: priceSeries, xMin, xMax, yMin: 70, yMax: 105, yStep: 5, zeroAt: 100, height: 420, right: 150,
+    series: priceSeries, xMin, xMax, yStep: 5, zeroAt: 100, height: 420, right: 150,
     yFmt: (y) => y, tipFmt: (y) => `${y.toFixed(1)} (${sign(y - 100)}%)`,
     aria: "Line chart of home value indexes, peak equals 100, for 1989-92 and today with three scenario paths",
   });
@@ -413,7 +463,7 @@ function render() {
   // Small multiples
   const macro = [
     { key: "cash_rate", title: "RBA cash rate", unit: "%", step: 4, min: 0 },
-    { key: "unemployment", title: "Unemployment rate", unit: "%", step: 2, min: 2 },
+    { key: "unemployment", title: D.jobs_label, unit: "%", step: 2, min: 2 },
     { key: "cpi_yoy", title: "Inflation (CPI, year on year)", unit: "%", step: 2, min: 0 },
   ];
   legend($("legend-macro"), [{ name: "1989–92", color: THEN }, { name: "Today", color: NOW }]);
@@ -442,33 +492,53 @@ function render() {
     aria: "Composite signal over time for both cycles",
   });
 }
-render();
-const mq = window.matchMedia("(prefers-color-scheme: dark)");
-mq.addEventListener?.("change", render);
-new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-
-/* ---------- Tables ---------- */
-const T = A.then, N = latest, L = A.twelve_months_later;
-const row = (label, then, now, later) => `<tr><td>${label}</td><td class="num">${then}</td><td class="num">${now}</td><td class="num">${later}</td></tr>`;
-const head = (c, t) => `<span class="colhead"><i class="sw" style="background:var(${c});width:14px"></i>${t}</span>`;
-$("compare").innerHTML = `<thead><tr><th></th><th class="num">${head("--then", fmtPeriod(T.period))}</th><th class="num">${head("--now", fmtPeriod(N.period))}</th><th class="num">${head("--then", fmtPeriod(L.period) + " (1 yr on)")}</th></tr></thead><tbody>
+function paintTables() {
+  const T = A.then, N = latest, L = A.twelve_months_later;
+  const row = (label, then, now, later) => `<tr><td>${label}</td><td class="num">${then}</td><td class="num">${now}</td><td class="num">${later}</td></tr>`;
+  const head = (c, t) => `<span class="colhead"><i class="sw" style="background:var(${c});width:14px"></i>${t}</span>`;
+  $("compare").innerHTML = `<thead><tr><th></th><th class="num">${head("--then", fmtPeriod(T.period))}</th><th class="num">${head("--now", fmtPeriod(N.period))}</th><th class="num">${head("--then", fmtPeriod(L.period) + " (1 yr on)")}</th></tr></thead><tbody>
   ${row("Home values vs peak (nominal)", sign(T.price_index - 100) + "%", sign(N.price_index - 100) + "%", sign(L.price_index - 100) + "%")}
   ${row("Home values vs peak (real)", sign(T.real_index - 100) + "%", sign(N.real_index - 100) + "%", sign(L.real_index - 100) + "%")}
   ${row("RBA cash rate", T.cash_rate.toFixed(2) + "%", N.cash_rate.toFixed(2) + "%", L.cash_rate.toFixed(2) + "%")}
   ${row("Typical variable mortgage rate", T.mortgage_rate.toFixed(2) + "%", N.mortgage_rate.toFixed(2) + "%", L.mortgage_rate.toFixed(2) + "%")}
-  ${row("Unemployment", T.unemployment.toFixed(1) + "%", N.unemployment.toFixed(1) + "%", L.unemployment.toFixed(1) + "%")}
+  ${row(esc(D.jobs_label), T.unemployment.toFixed(1) + "%", N.unemployment.toFixed(1) + "%", L.unemployment.toFixed(1) + "%")}
   ${row("CPI, year on year", T.cpi_yoy.toFixed(1) + "%", N.cpi_yoy.toFixed(1) + "%", L.cpi_yoy.toFixed(1) + "%")}
-  ${row("GDP, year on year", sign(T.gdp_yoy) + "%", sign(N.gdp_yoy) + "%", sign(L.gdp_yoy) + "%")}
-  ${row("Household debt to income (approx.)", "~65%", "~185%", "~65%")}
+  ${row("GDP, year on year (national)", sign(T.gdp_yoy) + "%", sign(N.gdp_yoy) + "%", sign(L.gdp_yoy) + "%")}
+  ${row("Household debt to income (national, approx.)", "~65%", "~185%", "~65%")}
   ${row("Composite signal", sign(D.score_then.composite, 0), sign(D.score_now.composite, 0), "")}
 </tbody>`;
 
-$("checks").innerHTML = D.checklist.map((c) => `<li class="${c.met ? "met" : "unmet"}"><span class="ic" aria-label="${c.met ? "met" : "not met"}">${c.met ? "✓" : "✕"}</span><span>${esc(c.rule)}</span><span class="detail">${esc(c.detail)}</span></li>`).join("");
+  $("checks").innerHTML = D.checklist.map((c) => `<li class="${c.met ? "met" : "unmet"}"><span class="ic" aria-label="${c.met ? "met" : "not met"}">${c.met ? "✓" : "✕"}</span><span>${esc(c.rule)}</span><span class="detail">${esc(c.detail)}</span></li>`).join("");
 
-const tone = (s) => (s <= -0.5 ? "critical" : s < 0 ? "warning" : s < 0.3 ? "neutral" : "good");
-$("indicators").innerHTML = `<thead><tr><th>Indicator</th><th class="num">Weight</th><th class="num">${head("--then", "1990 value")}</th><th class="num">${head("--now", "Now")}</th><th class="num">Score now</th></tr></thead><tbody>` +
-  D.score_now.indicators.map((i, k) => {
-    const t = D.score_then.indicators[k];
-    return `<tr><td>${esc(i.label)}</td><td class="num">${Math.round(i.weight * 100)}%</td><td class="num">${esc(t.value)}</td><td class="num">${esc(i.value)}</td><td class="num"><span class="pill tone-${tone(i.score)}">${sign(i.score, 2)}</span></td></tr>`;
-  }).join("") + "</tbody>";
+  const tone = (s) => (s <= -0.5 ? "critical" : s < 0 ? "warning" : s < 0.3 ? "neutral" : "good");
+  $("indicators").innerHTML = `<thead><tr><th>Indicator</th><th class="num">Weight</th><th class="num">${head("--then", fmtPeriod(A.then.period))}</th><th class="num">${head("--now", "Now")}</th><th class="num">Score now</th></tr></thead><tbody>` +
+    D.score_now.indicators.map((i, k) => {
+      const t = D.score_then.indicators[k];
+      return `<tr><td>${esc(i.label)}</td><td class="num">${Math.round(i.weight * 100)}%</td><td class="num">${esc(t.value)}</td><td class="num">${esc(i.value)}</td><td class="num"><span class="pill tone-${tone(i.score)}">${sign(i.score, 2)}</span></td></tr>`;
+    }).join("") + "</tbody>";
+}
+
+function show(region) {
+  REGION = ALL.regions[region] ? region : ALL.order[0];
+  D = ALL.regions[REGION];
+  cur = D.series.cur; hist = D.series.hist; latest = cur[cur.length - 1]; A = D.analogue;
+  base = D.scenarios.find((s) => s.key === "base");
+  bull = D.scenarios.find((s) => s.key === "bull");
+  bear = D.scenarios.find((s) => s.key === "bear");
+  for (const b of document.querySelectorAll(".toggle button")) b.setAttribute("aria-pressed", String(b.dataset.region === REGION));
+  paintText(); render(); paintTables();
+}
+
+const fromHash = () => (location.hash === "#sydney" ? "sydney" : "national");
+for (const b of document.querySelectorAll(".toggle button")) {
+  b.addEventListener("click", () => {
+    const r = b.dataset.region;
+    if (fromHash() !== r) location.hash = r; else show(r);
+  });
+}
+window.addEventListener("hashchange", () => show(fromHash()));
+show(fromHash());
+const mq = window.matchMedia("(prefers-color-scheme: dark)");
+mq.addEventListener?.("change", render);
+new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 </script>
