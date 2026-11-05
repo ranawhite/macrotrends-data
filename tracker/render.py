@@ -23,6 +23,8 @@ def summary(d: dict) -> str:
         f"Regime: {d['regime']['label']}   composite signal {d['score_now']['composite']:+d} "
         f"(1989-92 at same stage: {d['score_then']['composite']:+d})",
         f"Months since price peak: {a['months_from_peak']}",
+        *( [f"Includes RBA decision {d['rba_update']['date']}: cash rate {d['rba_update']['cash_rate']:.2f}% "
+            f"({d['rba_update']['change']:+.2f})"] if d.get("rba_update") else [] ),
         "",
         "Indicators now:",
     ]

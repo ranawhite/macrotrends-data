@@ -36,9 +36,16 @@ Mar 2026 = 100) and re-run. A month's index is last month's × (1 + Cotality mon
 | `data/sydney_1988_1994.csv` | Sydney 1988–94 cycle with NSW unemployment (approximate; illustrative) |
 | `data/sydney_2024_2026.csv` | Sydney 2024–26 (Cotality Sydney readings, NSW unemployment from Jobs and Skills Australia; gaps interpolated) |
 | `data/sydney_north_suburbs.csv` | North Shore and nearby suburb house medians (`basis` = reported or estimate) used for suburb projections |
+| `data/rba_decisions.csv` | Latest RBA decision(s), applied if newer than the latest data month |
 | `tracker/model.py` | Alignment, scoring, checklist, scenarios; `REGIONS` holds each market's files, peak and scenario paths |
 | `tracker/render.py` | Builds the dashboard and text summary |
 | `tracker/template.html` | Dashboard template |
+
+## RBA decisions between data months
+
+Home values arrive monthly, but the RBA can move in between. Add the decision to
+`data/rba_decisions.csv` (date, new cash rate); if it is newer than the latest data
+month, the tracker folds it into the latest row's cash and mortgage rates.
 
 ## Suburb projections (Sydney view)
 

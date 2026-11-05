@@ -381,10 +381,35 @@ def suburbs(cycle: Cycle, scen: list[dict], path: Path) -> list[dict]:
     return out
 
 
+def latest_rba(cur: Cycle) -> dict | None:
+    """Apply an RBA decision made after the last data month to the latest row.
+
+    Home value data arrives monthly, but the cash rate can change in between.
+    A decision newer than the latest row is folded in (cash rate and variable
+    mortgage rate move by the same amount) so the score reflects it now.
+    """
+    path = DATA / "rba_decisions.csv"
+    if not path.exists():
+        return None
+    with path.open(newline="") as fh:
+        rows = sorted(csv.DictReader(fh), key=lambda r: r["date"])
+    if not rows:
+        return None
+    last = rows[-1]
+    row = cur.latest
+    if last["date"][:7] <= row.period:
+        return None
+    delta = float(last["cash_rate"]) - row.cash_rate
+    row.cash_rate = float(last["cash_rate"])
+    row.mortgage_rate = round(row.mortgage_rate + delta, 2)
+    return {"date": last["date"], "cash_rate": row.cash_rate, "change": round(delta, 2), "note": last.get("note", "")}
+
+
 def build(region: str = "national") -> dict:
     cfg = REGIONS[region]
     hist = load(DATA / cfg["hist_csv"], "1989-92", peak_period=cfg["hist_peak"])
     cur = load(DATA / cfg["cur_csv"], "2026", peak_period=cfg["cur_peak"])
+    rba = latest_rba(cur)
     sc_now = score(cur, cur.latest)
     sc_then = score(hist, hist.at_offset(cur.latest.months_from_peak))
     label, tone = regime(sc_now["composite"])
@@ -394,6 +419,7 @@ def build(region: str = "national") -> dict:
         "place": cfg["place"],
         "jobs_label": cfg["jobs_label"],
         "as_of": cur.latest.period,
+        "rba_update": rba,
         "regime": {"label": label, "tone": tone},
         "score_now": sc_now,
         "score_then": sc_then,

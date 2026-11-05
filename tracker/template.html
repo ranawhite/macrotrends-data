@@ -293,8 +293,8 @@ const COPY = {
       "<strong>Inflation hid the fall.</strong> Nominal −4%, real about −12% to −15%.",
     ],
     diffs: [
-      "<strong>Debt is about 3× larger.</strong> Household debt is roughly 185% of disposable income versus about 65% in 1989, so a 4.6% cash rate bites about as hard as 17.5% did.",
-      "<strong>The RBA is still hiking.</strong> In mid-1990 it had already cut 2.5 points. Today it has lifted the cash rate 1 point in 2026, with inflation at 4.3%.",
+      "<strong>Debt is about 3× larger.</strong> Household debt is roughly 185% of disposable income versus about 65% in 1989, so a 4.85% cash rate bites about as hard as 17.5% did.",
+      "<strong>The RBA is still hiking.</strong> In mid-1990 it had already cut 2.5 points. Today it has lifted the cash rate 1.25 points in 2026, most recently to 4.85% on 3 November, with inflation at 4.3%.",
       "<strong>Prices are falling faster in nominal terms.</strong> About −6% in 7 months, Cotality's fastest pace in 40 years.",
       "<strong>Jobs are softer, not collapsing.</strong> Unemployment is at 4.7%, a 5-year high but far from 1990's surge.",
       "<strong>Supply is tight.</strong> Underbuilding and population growth should put a floor under prices sooner than in 1991.",
@@ -314,7 +314,7 @@ const COPY = {
       "<strong>The fall is much faster.</strong> Sydney is more than 10% below its February 2026 peak after 8 months. In 1989–92 the whole nominal fall was about 7% over 18 months.",
       "<strong>Sydney is the most rate-sensitive market.</strong> With the median dwelling near $1.18m, loans are the largest relative to incomes, so each RBA hike hits hardest here.",
       "<strong>NSW jobs are holding.</strong> State unemployment has eased from about 4.7% in May to about 4.2%. That is the main reason a 1990-style collapse is not the base case.",
-      "<strong>The RBA is still hiking.</strong> In early 1990 it had already started cutting. Today the cash rate is 4.60% and rising, with inflation at 4.3%.",
+      "<strong>The RBA is still hiking.</strong> In early 1990 it had already started cutting. Today the cash rate is 4.85% after a fifth 2026 hike on 3 November, with inflation at 4.3%.",
       "<strong>Sydney usually turns first.</strong> It led the recoveries in 2019 and 2023 once rates stopped rising. Expect the same when the RBA pivots.",
     ],
   },
@@ -343,7 +343,8 @@ function paintText() {
   $("lessons").innerHTML = C.lessons.map((l) => `<li>${l}</li>`).join("");
   $("diffs").innerHTML = C.diffs.map((l) => `<li>${l}</li>`).join("");
 
-  $("asof").textContent = `Data to ${fmtPeriod(D.as_of)} · ${A.months_from_peak} months after the peak`;
+  const R = D.rba_update;
+  $("asof").textContent = `Data to ${fmtPeriod(D.as_of)}${R ? ` · RBA ${new Date(R.date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}: ${R.change >= 0 ? "hike" : "cut"} to ${R.cash_rate.toFixed(2)}%` : ""} · ${A.months_from_peak} months after the peak`;
   $("answer").innerHTML = `
   <span class="pill tone-${D.regime.tone}">${esc(D.regime.label)}</span>
   <h2>${C.headline}</h2>
