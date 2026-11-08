@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+:root {
+  --bg: #fbfaf7; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e4e2dc;
+  --price: #3a3a38; --up: #1f7a4d; --down: #b3392f; --wave: #2f5fb3; --alt: #9a6b00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9b96; --line: #34332f;
+    --price: #c9c8c3; --up: #4fbf86; --down: #e56b60; --wave: #7aa2ec; --alt: #e0b048;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9b96; --line: #34332f;
+  --price: #c9c8c3; --up: #4fbf86; --down: #e56b60; --wave: #7aa2ec; --alt: #e0b048;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.5rem; margin: 0 0 2px; }
+.sub { color: var(--muted); margin-bottom: 20px; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs button { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+.tabs button[aria-pressed="true"] { border-color: var(--wave); color: var(--wave); font-weight: 600; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+svg { width: 100%; height: auto; display: block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.card h3 { margin: 0 0 6px; font-size: 1rem; }
+.card dl { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; margin: 0; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; font-variant-numeric: tabular-nums; }
+.bull { color: var(--up); font-weight: 600; } .bear { color: var(--down); font-weight: 600; }
+.foot { color: var(--muted); font-size: 0.85rem; margin-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{NAME}}</h1>
+  <div class="sub">{{SUB}}</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="panel"><svg id="chart" viewBox="0 0 1000 440" role="img" aria-label="Price with wave labels"></svg></div>
+  <div class="cards" id="cards"></div>
+  <p class="foot">Rules-based count: wave 2 never retraces all of wave 1, wave 3 is never the shortest, wave 4 never
+  overlaps wave 1; candidates are ranked on Fibonacci guidelines. A "?" label is a pivot not yet confirmed.
+  Elliott counts are probabilistic and not financial advice.</p>
+</main>
+<script>
+const DATA = {{DATA}};
+const fmt = v => v == null ? "–" : Array.isArray(v) ? v.slice().sort((a,b)=>a-b).map(fmt).join(" – ")
+  : v.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2});
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, text) { const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+
+function draw(deg) {
+  const svg = document.getElementById("chart"); svg.innerHTML = "";
+  const W = 1000, H = 440, L = 60, R = 70, T = 16, B = 30;
+  const bars = deg.bars, n = bars.length;
+  const prim = deg.entries[0], alt = deg.entries[1];
+  const lv = [];
+  for (const e of deg.entries.slice(0, 1)) {
+    if (e.target) lv.push(...e.target);
+    lv.push(e.invalid);
+  }
+  let lo = Math.min(...bars.map(b => b[2]), ...lv), hi = Math.max(...bars.map(b => b[1]), ...lv);
+  const pad = (hi - lo) * 0.05; lo -= pad; hi += pad;
+  const x = i => L + (W - L - R) * i / Math.max(1, n - 1 + n * 0.08);
+  const y = p => T + (H - T - B) * (1 - (p - lo) / (hi - lo));
+  const idx = {}; bars.forEach((b, i) => idx[b[0]] = i);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v);
+  // grid
+  for (let k = 0; k <= 5; k++) {
+    const p = lo + (hi - lo) * k / 5;
+    svg.append(el("line", {x1: L, x2: W - R, y1: y(p), y2: y(p), stroke: css("--line")}));
+    svg.append(el("text", {x: L - 6, y: y(p) + 4, "text-anchor": "end", "font-size": 11, fill: css("--muted")}, fmt(p)));
+  }
+  for (let k = 0; k < 6; k++) {
+    const i = Math.round((n - 1) * k / 5);
+    svg.append(el("text", {x: x(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: css("--muted")}, bars[i][0].slice(0, 7)));
+  }
+  // price
+  svg.append(el("path", {d: bars.map((b, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(b[3]).toFixed(1)).join(""),
+    fill: "none", stroke: css("--price"), "stroke-width": 1.2}));
+  // levels for primary
+  const band = (vals, color, label) => {
+    if (!vals) return; const a = Math.min(...vals), b = Math.max(...vals);
+    svg.append(el("rect", {x: x(n - 1), width: W - R - x(n - 1) + 60, y: y(b), height: Math.max(2, y(a) - y(b)), fill: color, opacity: 0.18}));
+    svg.append(el("text", {x: W - 4, y: y(b) - 3, "text-anchor": "end", "font-size": 11, fill: color}, label));
+  };
+  if (prim) {
+    band(prim.target, css("--wave"), "target " + prim.wave);
+    svg.append(el("line", {x1: L, x2: W - 4, y1: y(prim.invalid), y2: y(prim.invalid), stroke: css("--down"), "stroke-dasharray": "5 4"}));
+    svg.append(el("text", {x: W - 4, y: y(prim.invalid) + 13, "text-anchor": "end", "font-size": 11, fill: css("--down")}, "invalid " + fmt(prim.invalid)));
+  }
+  // wave paths
+  [[alt, "--alt", 1.2, "4 3"], [prim, "--wave", 2, ""]].forEach(([e, c, sw, dash]) => {
+    if (!e) return; const col = css(c);
+    const pts = e.points.map(p => [x(idx[p.d]), y(p.p), p]);
+    svg.append(el("path", {d: pts.map((q, i) => (i ? "L" : "M") + q[0] + " " + q[1]).join(""), fill: "none", stroke: col, "stroke-width": sw, "stroke-dasharray": dash}));
+    pts.forEach(([px, py, p], i) => {
+      const above = i + 1 < pts.length ? pts[i + 1][1] > py : (i > 0 ? pts[i - 1][1] > py : true);
+      svg.append(el("circle", {cx: px, cy: py, r: 3, fill: col}));
+      const off = e === prim ? 0 : 14;
+      svg.append(el("text", {x: px, y: py + (above ? -8 - off : 16 + off), "text-anchor": "middle", "font-size": e === prim ? 14 : 11,
+        "font-weight": 700, fill: col}, e === prim ? p.l + (p.ok ? "" : "?") : "(" + p.l + ")"));
+    });
+  });
+  // cards
+  const cards = document.getElementById("cards"); cards.innerHTML = "";
+  if (!deg.entries.length) cards.innerHTML = '<div class="card panel">{{NOCOUNT}}</div>';
+  deg.entries.forEach((e, k) => {
+    const d = document.createElement("div"); d.className = "card panel";
+    const cls = e.bias.startsWith("Bull") ? "bull" : "bear";
+    d.innerHTML = `<h3>${k ? "Alternate" : "Primary"} count · ${e.structure} · score ${e.score}</h3>
+      <dl><dt>Now</dt><dd>Wave ${e.wave}: ${e.desc}</dd>
+      <dt>Bias</dt><dd class="${cls}">${e.bias}</dd>
+      <dt>Target</dt><dd>${fmt(e.target)}</dd>
+      ${e.cap ? `<dt>Cap</dt><dd>${fmt(e.cap)}</dd>` : ""}
+      <dt>Invalid</dt><dd>${fmt(e.invalid)}</dd>
+      <dt>Next</dt><dd>${e.next}${e.next_zone ? " → " + fmt(e.next_zone) : ""}</dd>
+      ${e.notes.length ? `<dt>Notes</dt><dd>${e.notes.join(", ")}</dd>` : ""}</dl>`;
+    cards.append(d);
+  });
+}
+const tabs = document.getElementById("tabs");
+DATA.forEach((deg, i) => {
+  const b = document.createElement("button"); b.textContent = deg.name;
+  b.onclick = () => { [...tabs.children].forEach(c => c.setAttribute("aria-pressed", c === b)); draw(deg); };
+  tabs.append(b); if (!i) b.click();
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => tabs.querySelector('[aria-pressed="true"]').click());
+</script>
+</body>
+</html>

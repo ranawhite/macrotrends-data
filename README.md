@@ -58,3 +58,36 @@ fell further in 1989–92, 2017–19 and 2022 and rebounded faster. Edit
 
 Scenario paths and starting probabilities are judgement, not a statistical
 forecast. Historical figures are approximate. This is not financial advice.
+
+# Elliott Wave Analyzer (any stock ticker)
+
+`elliott/` counts Elliott Waves for any symbol Yahoo Finance knows, at two degrees:
+**Primary** (weekly bars, ~5 years) and **Intermediate** (daily bars, ~1 year).
+
+```bash
+python3 elliott/analyze.py AAPL                 # US
+python3 elliott/analyze.py RELIANCE.NS TCS.NS   # NSE India (.BO for BSE)
+python3 elliott/analyze.py ^NSEI ^NSEBANK ^GSPC # indices
+python3 elliott/analyze.py BHP.AX               # ASX
+python3 elliott/analyze.py XYZ --csv prices.csv # offline: Date,Open,High,Low,Close
+```
+
+For each degree it prints a primary and an alternate count: the wave in progress,
+the bias, a Fibonacci target zone, the **invalidation level** (the count is wrong
+if price trades beyond it) and the next expected wave. An interactive chart is
+written to `docs/elliott/<TICKER>.html` (git-ignored).
+
+How it works (`elliott/elliott.py`, standard library only):
+
+1. ZigZag swing pivots on highs/lows, with thresholds scaled to the stock's own volatility.
+2. Every reading of the latest pivots as an impulse (0-1-2-3-4-5, then A-B-C) or as
+   a standalone A-B-C correction, in either direction.
+3. Hard rules reject counts: wave 2 never retraces all of wave 1, wave 3 is never the
+   shortest, wave 4 never enters wave 1 territory, B stays within 138.2% of A.
+4. Survivors are ranked on Fibonacci guidelines (2 ≈ 50–61.8% of 1, 3 ≈ 1.618 × 1,
+   4 ≈ 38.2% of 3, 5 ≈ 1 × 1, 2/4 alternation, B ≈ 50–78.6% of A, C ≈ 1–1.618 × A),
+   how much of the chart the count explains, and whether wave 0 is a real turning point.
+
+Not modelled: diagonals, triangles and W-X-Y combinations (reported as "no clean
+count"). Wave counts are probabilistic; this is not financial advice.
+`python3 elliott/test_elliott.py` runs the tests.
