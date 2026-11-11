@@ -30,6 +30,7 @@ class Row:
     gdp_yoy: float
     price_index: float
     note: str = ""
+    loans_qoq: float | None = None  # quarterly % change in number of new home loans (national)
     real_index: float = 0.0
     months_from_peak: int = 0
 
@@ -86,6 +87,18 @@ class Cycle:
         return self.rows[-1]
 
 
+def attach_lending(cycle: Cycle, which: str) -> None:
+    """Give each row the latest quarterly lending change at or before its month."""
+    path = DATA / "lending.csv"
+    if not path.exists():
+        return
+    with path.open(newline="") as fh:
+        q = sorted((r["period"], float(r["loans_qoq"])) for r in csv.DictReader(fh) if r["cycle"] == which)
+    for row in cycle.rows:
+        vals = [v for p, v in q if p <= row.period]
+        row.loans_qoq = vals[-1] if vals else None
+
+
 def load(path: Path, name: str, peak_period: str | None = None) -> Cycle:
     rows = []
     with path.open(newline="") as fh:
@@ -125,12 +138,13 @@ def min_over(cycle: Cycle, row: Row, field_name: str, months: int) -> float:
 
 INDICATORS = [
     # key, label, weight
-    ("policy", "RBA direction (6-month change in cash rate)", 0.25),
-    ("real_rate", "Real cash rate (cash rate minus CPI)", 0.10),
+    ("policy", "RBA direction (6-month change in cash rate)", 0.20),
+    ("real_rate", "Real cash rate (cash rate minus CPI)", 0.08),
     ("jobs", "Unemployment momentum (rise from 12-month low)", 0.20),
-    ("prices", "Home value momentum (annualised, latest ~3 months)", 0.25),
-    ("inflation", "Inflation vs RBA 2-3% target (room to cut)", 0.10),
-    ("growth", "GDP growth", 0.10),
+    ("prices", "Home value momentum (annualised, latest ~3 months)", 0.20),
+    ("lending", "New home loans (quarterly change in number)", 0.15),
+    ("inflation", "Inflation vs RBA 2-3% target (room to cut)", 0.09),
+    ("growth", "GDP growth", 0.08),
 ]
 
 
@@ -149,6 +163,9 @@ def score(cycle: Cycle, row: Row) -> dict:
         # +0.5pt from the 12-month low is the classic recession trigger (Sahm-style).
         "jobs": (clamp(0.4 - jobs_rise / 0.5 * 1.4), f"+{jobs_rise:.1f} pts"),
         "prices": (clamp(price_ann / 8.0), f"{price_ann:+.1f}% p.a."),
+        # New lending leads prices by a few months; +/-6% a quarter is a strong move.
+        "lending": ((clamp(row.loans_qoq / 6.0), f"{row.loans_qoq:+.1f}% q/q") if row.loans_qoq is not None
+                    else (0.0, "n/a")),
         "inflation": (-clamp((row.cpi_yoy - 2.5) / 1.5), f"{row.cpi_yoy:.1f}%"),
         "growth": (clamp((row.gdp_yoy - 2.0) / 1.5), f"{row.gdp_yoy:+.1f}%"),
     }
@@ -189,6 +206,8 @@ def checklist(cycle: Cycle) -> list[dict]:
         ("Inflation back under 3%", r.cpi_yoy < 3.0, f"CPI {r.cpi_yoy:.1f}% y/y"),
         ("Unemployment no longer rising", d_unemp <= 0, f"{d_unemp:+.1f} pts over 3 months"),
         ("Monthly home values back above zero", d_price > 0, f"{d_price:+.1f} index pts last month"),
+        ("New home loans rising again", (r.loans_qoq or 0) > 0,
+         f"{r.loans_qoq:+.1f}% last quarter" if r.loans_qoq is not None else "no data"),
     ]
     return [{"rule": a, "met": bool(b), "detail": c} for a, b, c in rules]
 
@@ -409,6 +428,8 @@ def build(region: str = "national") -> dict:
     cfg = REGIONS[region]
     hist = load(DATA / cfg["hist_csv"], "1989-92", peak_period=cfg["hist_peak"])
     cur = load(DATA / cfg["cur_csv"], "2026", peak_period=cfg["cur_peak"])
+    attach_lending(hist, "hist")
+    attach_lending(cur, "cur")
     rba = latest_rba(cur)
     sc_now = score(cur, cur.latest)
     sc_then = score(hist, hist.at_offset(cur.latest.months_from_peak))

@@ -1,0 +1,40 @@
+cycle,period,loans_qoq,note
+hist,1988-03,3,approx. owner-occupier housing finance commitments (number); illustrative
+hist,1988-06,2,
+hist,1988-09,-4,
+hist,1988-12,-6,
+hist,1989-03,-8,
+hist,1989-06,-10,
+hist,1989-09,-6,
+hist,1989-12,-2,
+hist,1990-03,2,lending turns up soon after first rate cut
+hist,1990-06,5,
+hist,1990-09,4,
+hist,1990-12,3,
+hist,1991-03,6,
+hist,1991-06,8,
+hist,1991-09,6,
+hist,1991-12,7,
+hist,1992-03,5,
+hist,1992-06,4,
+hist,1992-09,3,
+hist,1992-12,3,
+hist,1993-03,3,
+hist,1993-06,2,
+hist,1993-09,3,
+hist,1993-12,2,
+hist,1994-03,1,
+hist,1994-06,-2,
+hist,1994-09,-4,
+hist,1994-12,-6,
+cur,2024-03,1.5,estimate
+cur,2024-06,2.5,estimate
+cur,2024-09,3.0,estimate
+cur,2024-12,1.0,estimate
+cur,2025-03,0.5,estimate
+cur,2025-06,2.5,estimate
+cur,2025-09,3.5,estimate
+cur,2025-12,2.0,estimate; investor share of new loans 41.5% (ABS)
+cur,2026-03,-1.5,estimate
+cur,2026-06,-5.4,ABS: number of new loan commitments -5.4% to 134225
+cur,2026-09,-15.0,ABS: -15.0% to 111878; investors -30.6%; owner-occupiers -5.3%; largest fall on record

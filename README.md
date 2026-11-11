@@ -6,8 +6,8 @@ or open `docs/index.html#sydney`). Each cycle is lined up by **months since its
 price peak** (national: Dec 1989 and Mar 2026; Sydney: Sep 1989 and Feb 2026). The tracker:
 
 - scores the current macro backdrop (RBA direction, real cash rate, unemployment
-  momentum, home value momentum, inflation, GDP) into a composite signal from −100 to +100,
-- runs a five-point "bottom checklist" built from the 1991, 2019 and 2023 troughs,
+  momentum, home value momentum, new home loans, inflation, GDP) into a composite signal from −100 to +100,
+- runs a six-point "bottom checklist" built from the 1991, 2019 and 2023 troughs,
 - projects three 12-month scenarios for the national home value index, with
   probabilities that tilt as the composite signal changes,
 - writes an interactive dashboard to `docs/index.html`.
@@ -36,6 +36,7 @@ Mar 2026 = 100) and re-run. A month's index is last month's × (1 + Cotality mon
 | `data/sydney_1988_1994.csv` | Sydney 1988–94 cycle with NSW unemployment (approximate; illustrative) |
 | `data/sydney_2024_2026.csv` | Sydney 2024–26 (Cotality Sydney readings, NSW unemployment from Jobs and Skills Australia; gaps interpolated) |
 | `data/sydney_north_suburbs.csv` | North Shore and nearby suburb house medians (`basis` = reported or estimate) used for suburb projections |
+| `data/lending.csv` | Quarterly change in number of new home loans (ABS Lending Indicators for Jun/Sep 2026; earlier values approximate) |
 | `data/rba_decisions.csv` | Latest RBA decision(s), applied if newer than the latest data month |
 | `tracker/model.py` | Alignment, scoring, checklist, scenarios; `REGIONS` holds each market's files, peak and scenario paths |
 | `tracker/render.py` | Builds the dashboard and text summary |

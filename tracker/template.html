@@ -123,7 +123,7 @@ header { display: grid; gap: 18px; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .sw { width: 18px; }
-.multiples { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.multiples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 860px) { .multiples { grid-template-columns: 1fr; } }
 .multiples .panel { display: grid; gap: 6px; padding: 14px 14px 8px; }
 .note { font-size: 13px; color: var(--ink-3); }
@@ -233,7 +233,7 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
   <section>
     <div class="section-head">
       <h2>Bottom checklist</h2>
-      <p class="lede">The 1991 trough, and the 2019 and early-2023 bottoms, came after most of these turned. A boom needs all five.</p>
+      <p class="lede">The 1991 trough, and the 2019 and early-2023 bottoms, came after most of these turned. A boom needs all six.</p>
     </div>
     <ul class="checks" id="checks"></ul>
   </section>
@@ -265,9 +265,9 @@ details summary:focus-visible { outline: 2px solid var(--now); outline-offset: 2
   <footer class="foot">
     <details>
       <summary>Method and data</summary>
-      <p style="margin-top:8px">Six indicators are each scored from −1 to +1 and weighted: RBA direction 25%, home value momentum 25%, unemployment momentum 20%, real cash rate 10%, inflation versus target 10%, GDP growth 10%. Real prices deflate the nominal index by CPI. Scenario paths and priors are analyst judgement; every 10 points of composite below −30 moves 3 percentage points of probability from the early-pivot path to the recession path. Re-run <span class="num">python3 tracker/render.py</span> after adding a row to <span class="num">data/current_2024_2026.csv</span>.</p>
+      <p style="margin-top:8px">Seven indicators are each scored from −1 to +1 and weighted: RBA direction 20%, home value momentum 20%, unemployment momentum 20%, new home loans 15%, inflation versus target 9%, real cash rate 8%, GDP growth 8%. New home loans use the ABS Lending Indicators count of new loan commitments (national, quarterly); 2026 June and September quarters are ABS figures, earlier 2024–26 quarters and the 1988–94 series are approximate. Real prices deflate the nominal index by CPI. Scenario paths and priors are analyst judgement; every 10 points of composite below −30 moves 3 percentage points of probability from the early-pivot path to the recession path. Re-run <span class="num">python3 tracker/render.py</span> after adding a row to <span class="num">data/current_2024_2026.csv</span>.</p>
     </details>
-    <p>1988–94 figures are approximate quarterly values reconstructed from RBA, ABS and REIA historical series; treat them as illustrative. 2026 figures are from Cotality's Home Value Index (Jul–Oct 2026), ABS Labour Force (Sep 2026), ABS monthly CPI (Sep 2026) and ABS National Accounts (Jun qtr 2026). Apr–Jun 2026 monthly values are interpolated to match Cotality's −5.2% from-peak reading for September. Sydney 2026 values are built from Cotality's Sydney readings (−1.2% in June, 7.1% below peak in August, more than 10% below peak in October, −7.0% over the year to September) with NSW unemployment from Jobs and Skills Australia; months between those readings are interpolated. Sydney 1988–94 values are approximate, from REIA and NSW Valuer-General median series. Cash rate, CPI and GDP are national in both views.</p>
+    <p>1988–94 figures are approximate quarterly values reconstructed from RBA, ABS and REIA historical series; treat them as illustrative. 2026 figures are from Cotality's Home Value Index (Jul–Oct 2026), ABS Labour Force (Sep 2026), ABS monthly CPI (Sep 2026) and ABS National Accounts (Jun qtr 2026). Apr–Jun 2026 monthly values are interpolated to match Cotality's −5.2% from-peak reading for September. Sydney 2026 values are built from Cotality's Sydney readings (−1.2% in June, 7.1% below peak in August, more than 10% below peak in October, −7.0% over the year to September) with NSW unemployment from Jobs and Skills Australia; months between those readings are interpolated. Sydney 1988–94 values are approximate, from REIA and NSW Valuer-General median series. Cash rate, CPI, GDP and new home loans are national in both views. New home loans: ABS Lending Indicators, June and September quarters 2026.</p>
     <p>This is a scenario tool, not financial advice or a prediction of any particular property's value.</p>
   </footer>
 </main>
@@ -297,6 +297,7 @@ const COPY = {
       "<strong>The RBA is still hiking.</strong> In mid-1990 it had already cut 2.5 points. Today it has lifted the cash rate 1.25 points in 2026, most recently to 4.85% on 3 November, with inflation at 4.3%.",
       "<strong>Prices are falling faster in nominal terms.</strong> About −6% in 7 months, Cotality's fastest pace in 40 years.",
       "<strong>Jobs are softer, not collapsing.</strong> Unemployment is at 4.7%, a 5-year high but far from 1990's surge.",
+      "<strong>Credit has seized up.</strong> New home loans fell 15% in the September quarter, the largest fall on record, after −5.4% in June. Investor loans fell 31% ahead of tax changes. In 1990 lending was already recovering by this stage.",
       "<strong>Supply is tight.</strong> Underbuilding and population growth should put a floor under prices sooner than in 1991.",
     ],
   },
@@ -315,6 +316,7 @@ const COPY = {
       "<strong>Sydney is the most rate-sensitive market.</strong> With the median dwelling near $1.18m, loans are the largest relative to incomes, so each RBA hike hits hardest here.",
       "<strong>NSW jobs are holding.</strong> State unemployment has eased from about 4.7% in May to about 4.2%. That is the main reason a 1990-style collapse is not the base case.",
       "<strong>The RBA is still hiking.</strong> In early 1990 it had already started cutting. Today the cash rate is 4.85% after a fifth 2026 hike on 3 November, with inflation at 4.3%.",
+      "<strong>Investors have stepped back.</strong> National new loans fell 15% in the September quarter, led by a 31% drop in investor loans ahead of tax changes. Sydney, where investors are a large share of buyers, is exposed to that.",
       "<strong>Sydney usually turns first.</strong> It led the recoveries in 2019 and 2023 once rates stopped rising. Expect the same when the RBA pivots.",
     ],
   },
@@ -493,16 +495,17 @@ function render() {
     { key: "cash_rate", title: "RBA cash rate", unit: "%", step: 4, min: 0 },
     { key: "unemployment", title: D.jobs_label, unit: "%", step: 2, min: 2 },
     { key: "cpi_yoy", title: "Inflation (CPI, year on year)", unit: "%", step: 2, min: 0 },
+    { key: "loans_qoq", title: "New home loans (number, quarterly change)", unit: "%", step: 5, zero: true },
   ];
   legend($("legend-macro"), [{ name: "1989–92", color: THEN }, { name: "Today", color: NOW }]);
   $("multiples").innerHTML = macro.map((m) => `<div class="panel"><h3>${m.title}</h3><div class="chart" id="mx-${m.key}"></div></div>`).join("");
   for (const mc of macro) {
     lineChart($(`mx-${mc.key}`), {
       series: [
-        { tipName: "1989–92", color: THEN, points: pts(histWin, (r) => r[mc.key]) },
-        { label: "Today", color: NOW, width: 2.5, endDot: true, points: pts(cur.filter((r) => r.months_from_peak >= xMin), (r) => r[mc.key]), maxGap: 1 },
+        { tipName: "1989–92", color: THEN, points: pts(histWin.filter((r) => r[mc.key] != null), (r) => r[mc.key]) },
+        { label: "Today", color: NOW, width: 2.5, endDot: true, points: pts(cur.filter((r) => r.months_from_peak >= xMin && r[mc.key] != null), (r) => r[mc.key]), maxGap: 1 },
       ],
-      xMin, xMax, yMin: mc.min, yStep: mc.step, width: 340, height: 230, right: 12, xStep: 24,
+      xMin, xMax, yMin: mc.min, yStep: mc.step, zeroAt: mc.zero ? 0 : undefined, width: 420, height: 230, right: 12, xStep: 12,
       yFmt: (y) => y + "%", tipFmt: (y) => y.toFixed(2).replace(/0$/, "") + "%",
       aria: `${mc.title}, 1989-92 versus today, by months from the price peak`,
     });
